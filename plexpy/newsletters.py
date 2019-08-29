@@ -31,6 +31,7 @@ import logger
 import newsletter_handler
 import pmsconnect
 from notifiers import send_notification, EMAIL
+from servers import plexServer
 
 
 AGENT_IDS = {
@@ -567,7 +568,6 @@ class Newsletter(object):
             base_url = helpers.get_plexpy_url() + '/newsletter/'
 
         parameters = {
-            'server_name': plexpy.CONFIG.PMS_NAME,
             'start_date': self.start_date.format(date_format),
             'end_date': self.end_date.format(date_format),
             'current_year': self.start_date.year,
@@ -588,6 +588,11 @@ class Newsletter(object):
             'newsletter_id_name': self.newsletter_id_name,
             'newsletter_password': plexpy.CONFIG.NEWSLETTER_PASSWORD
         }
+
+        server_name = ''
+        for server_id in self.config['incl_servers']:
+            server_name = server_name + plexpy.PMS_SERVERS.get_server_by_id(server_id).CONFIG.PMS_NAME + ', '
+        parameters['server_name'] = server_name.rstrip(', ')
 
         return parameters
 
@@ -668,6 +673,7 @@ class RecentlyAdded(Newsletter):
     """
     NAME = 'Recently Added'
     _DEFAULT_CONFIG = Newsletter._DEFAULT_CONFIG.copy()
+    _DEFAULT_CONFIG['incl_servers'] = []
     _DEFAULT_CONFIG['incl_libraries'] = []
     _DEFAULT_SUBJECT = 'Recently Added to {server_name}! ({end_date})'
     _DEFAULT_BODY = 'View the newsletter here: {newsletter_url}'
@@ -677,28 +683,28 @@ class RecentlyAdded(Newsletter):
     def _get_recently_added(self, media_type=None):
         from notification_handler import format_group_index
 
-        pms_connect = pmsconnect.PmsConnect()
-
         recently_added = []
         done = False
         start = 0
 
         while not done:
-            recent_items = pms_connect.get_recently_added_details(start=str(start), count='10', media_type=media_type)
-            filtered_items = [i for i in recent_items['recently_added']
-                              if self.start_time < helpers.cast_to_int(i['added_at']) < self.end_time]
-            if len(filtered_items) < 10:
-                done = True
-            else:
-                start += 10
+            for server_id in self.config['incl_servers']:
+                server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
+                recent_items = server.PMSCONNECTION.get_recently_added_details(start=str(start), count='10', media_type=media_type)
+                filtered_items = [i for i in recent_items['recently_added']
+                                  if self.start_time < helpers.cast_to_int(i['added_at']) < self.end_time]
+                if len(filtered_items) < 10:
+                    done = True
+                else:
+                    start += 10
 
-            recently_added.extend(filtered_items)
+                recently_added.extend(filtered_items)
 
         if media_type in ('movie', 'other_video'):
             movie_list = []
             for item in recently_added:
                 # Filter included libraries
-                if item['section_id'] not in self.config['incl_libraries']:
+                if str(item['library_id']) not in self.config['incl_libraries']:
                     continue
 
                 movie_list.append(item)
@@ -710,7 +716,7 @@ class RecentlyAdded(Newsletter):
             show_rating_keys = []
             for item in recently_added:
                 # Filter included libraries
-                if item['section_id'] not in self.config['incl_libraries']:
+                if str(item['library_id']) not in self.config['incl_libraries']:
                     continue
 
                 if item['media_type'] == 'show':
@@ -723,8 +729,11 @@ class RecentlyAdded(Newsletter):
                 if show_rating_key in show_rating_keys:
                     continue
 
-                show_metadata = pms_connect.get_metadata_details(show_rating_key, media_info=False)
-                children = pms_connect.get_item_children(show_rating_key, get_grandchildren=True)
+                server = plexpy.PMS_SERVERS.get_server_by_id(item['server_id'])
+                show_metadata = server.PMSCONNECTION.get_metadata_details(show_rating_key, media_info=False)
+                show_metadata['pms_web_url'] = item['pms_web_url']
+                show_metadata['pms_identifier'] = item['pms_identifier']
+                children = server.PMSCONNECTION.get_item_children(show_rating_key, get_grandchildren=True)
                 filtered_children = [i for i in children['children_list']
                                      if self.start_time < helpers.cast_to_int(i['added_at']) < self.end_time]
                 filtered_children.sort(key=lambda x: int(x['parent_media_index']))
@@ -755,7 +764,7 @@ class RecentlyAdded(Newsletter):
             artist_rating_keys = []
             for item in recently_added:
                 # Filter included libraries
-                if item['section_id'] not in self.config['incl_libraries']:
+                if str(item['library_id']) not in self.config['incl_libraries']:
                     continue
 
                 if item['media_type'] == 'artist':
@@ -768,15 +777,18 @@ class RecentlyAdded(Newsletter):
                 if artist_rating_key in artist_rating_keys:
                     continue
 
-                artist_metadata = pms_connect.get_metadata_details(artist_rating_key, media_info=False)
-                children = pms_connect.get_item_children(artist_rating_key)
+                server = plexpy.PMS_SERVERS.get_server_by_id(item['server_id'])
+                artist_metadata = server.PMSCONNECTION.get_metadata_details(artist_rating_key, media_info=False)
+                artist_metadata['pms_web_url'] = item['pms_web_url']
+                artist_metadata['pms_identifier'] = item['pms_identifier']
+                children = server.PMSCONNECTION.get_item_children(artist_rating_key)
                 filtered_children = [i for i in children['children_list']
                                      if self.start_time < helpers.cast_to_int(i['added_at']) < self.end_time]
                 filtered_children.sort(key=lambda x: x['added_at'])
 
                 albums = []
                 for a in filtered_children:
-                    album_metadata = pms_connect.get_metadata_details(a['rating_key'], media_info=False)
+                    album_metadata = server.PMSCONNECTION.get_metadata_details(a['rating_key'], media_info=False)
                     album_metadata['track_count'] = helpers.cast_to_int(album_metadata['children_count'])
                     albums.append(album_metadata)
 
@@ -793,16 +805,17 @@ class RecentlyAdded(Newsletter):
     def retrieve_data(self):
         from notification_handler import get_img_info, set_hash_image_info
 
-        if not self.config['incl_libraries']:
+        if not self.config['incl_libraries'] or not self.config['incl_servers']:
             logger.warn(u"Tautulli Newsletters :: Failed to retrieve %s newsletter data: no libraries selected." % self.NAME)
 
         media_types = set()
-        for s in self._get_sections():
-            if str(s['section_id']) in self.config['incl_libraries']:
-                if s['section_type'] == 'movie' and s['agent'] == 'com.plexapp.agents.none':
-                    media_types.add('other_video')
-                else:
-                    media_types.add(s['section_type'])
+        for server_id in self.config['incl_servers']:
+            for s in self._get_sections(server_id):
+                if str(s['library_id']) in self.config['incl_libraries']:
+                    if s['section_type'] == 'movie' and s['agent'] == 'com.plexapp.agents.none':
+                        media_types.add('other_video')
+                    else:
+                        media_types.add(s['section_type'])
 
         recently_added = {}
         for media_type in media_types:
@@ -825,12 +838,12 @@ class RecentlyAdded(Newsletter):
                     fallback = 'poster'
 
                 item['thumb_hash'] = set_hash_image_info(
-                    img=item['thumb'], width=150, height=height, fallback=fallback)
+                    server_id=item['server_id'], img=item['thumb'], width=150, height=height, fallback=fallback)
 
                 if item['art']:
                     item['art_hash'] = set_hash_image_info(
-                        img=item['art'], width=500, height=280,
-                        opacity=25, background='282828', blur=3, fallback='art')
+                        server_id=item['server_id'],
+                        img=item['art'], width=500, height=280, opacity=25, background='282828', blur=3, fallback='art')
                 else:
                     item['art_hash'] = ''
 
@@ -849,13 +862,13 @@ class RecentlyAdded(Newsletter):
                     fallback = 'poster'
 
                 img_info = get_img_info(
-                    img=item['thumb'], rating_key=item['rating_key'], title=item['title'],
+                    img=item['thumb'], server_id=item['server_id'], rating_key=item['rating_key'], title=item['title'],
                     width=150, height=height, fallback=fallback)
 
                 item['thumb_url'] = img_info.get('img_url') or common.ONLINE_POSTER_THUMB
 
                 img_info = get_img_info(
-                    img=item['art'], rating_key=item['rating_key'], title=item['title'],
+                    img=item['art'], server_id=item['server_id'], rating_key=item['rating_key'], title=item['title'],
                     width=500, height=280, opacity=25, background='282828', blur=3, fallback='art')
 
                 item['art_url'] = img_info.get('img_url')
@@ -887,21 +900,31 @@ class RecentlyAdded(Newsletter):
 
         return False
 
-    def _get_sections(self):
-        return libraries.Libraries().get_sections()
+    def _get_sections(self, server_id):
+        return libraries.Libraries().get_sections(server_id=server_id)
+
+    def _get_server_options(self):
+
+        servers = []
+        for server in plexpy.PMS_SERVERS:
+            servers.append({'text': server.CONFIG.PMS_NAME, 'value': server.CONFIG.ID})
+
+        return servers
 
     def _get_sections_options(self):
         sections = {}
-        for s in self._get_sections():
-            if s['section_type'] != 'photo':
-                if s['section_type'] == 'movie' and s['agent'] == 'com.plexapp.agents.none':
-                    library_type = 'other_video'
-                else:
-                    library_type = s['section_type']
-                group = sections.get(library_type, [])
-                group.append({'value': s['section_id'],
-                              'text': s['section_name']})
-                sections[library_type] = group
+        for server_id in self.config['incl_servers']:
+            server_name = plexpy.PMS_SERVERS.get_server_by_id(server_id).CONFIG.PMS_NAME
+            for s in self._get_sections(server_id):
+                if s['section_type'] != 'photo':
+                    if s['section_type'] == 'movie' and s['agent'] == 'com.plexapp.agents.none':
+                        library_type = 'other_video'
+                    else:
+                        library_type = s['section_type']
+                    group = sections.get(library_type, [])
+                    group.append({'value': s['library_id'],
+                                  'text': s['section_name'] + '(' + server_name + ')'})
+                    sections[library_type] = group
 
         groups = OrderedDict([(k, v) for k, v in [
             ('Movie Libraries', sections.get('movie')),
@@ -913,16 +936,16 @@ class RecentlyAdded(Newsletter):
         return groups
 
     def build_params(self):
+
         parameters = self._build_params()
 
         newsletter_libraries = []
-        for s in self._get_sections():
-            if str(s['section_id']) in self.config['incl_libraries']:
-                newsletter_libraries.append(s['section_name'])
+        for server_id in self.config['incl_servers']:
+            for s in self._get_sections(server_id):
+                if str(s['library_id']) in self.config['incl_libraries']:
+                    newsletter_libraries.append(s['section_name'])
 
         parameters['newsletter_libraries'] = ', '.join(sorted(newsletter_libraries))
-        parameters['pms_identifier'] = plexpy.CONFIG.PMS_IDENTIFIER
-        parameters['pms_web_url'] = plexpy.CONFIG.PMS_WEB_URL
 
         return parameters
 
@@ -930,6 +953,14 @@ class RecentlyAdded(Newsletter):
         config_options = self._return_config_options()
 
         additional_config = [
+            {'label': 'Select Servers',
+             'value': self.config['incl_servers'],
+             'description': 'Select the Servers to include in the newsletter.',
+             'name': 'newsletter_config_incl_servers',
+             'input_type': 'selectize',
+             'select_options': self._get_server_options(),
+             'refresh': True,
+             },
             {'label': 'Included Libraries',
              'value': self.config['incl_libraries'],
              'description': 'Select the libraries to include in the newsletter.',

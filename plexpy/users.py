@@ -25,38 +25,55 @@ import libraries
 import logger
 import plextv
 import session
+import pmsconnect
 
 
 def refresh_users():
     logger.info(u"Tautulli Users :: Requesting users list refresh...")
-    result = plextv.PlexTV().get_full_users_list()
+    result = plexpy.PLEXTV.get_full_users_list()
 
     if result:
         monitor_db = database.MonitorDatabase()
 
-        for item in result:
+        for user in result:
 
-            if item.get('shared_libraries'):
-                item['shared_libraries'] = ';'.join(item['shared_libraries'])
-            elif item.get('server_token'):
-                libs = libraries.Libraries().get_sections()
-                item['shared_libraries'] = ';'.join([str(l['section_id']) for l in libs])
-
-            keys_dict = {"user_id": item.pop('user_id')}
+            keys_dict = {"user_id": user.pop('user_id')}
 
             # Check if we've set a custom avatar if so don't overwrite it.
             if keys_dict['user_id']:
-                avatar_urls = monitor_db.select('SELECT thumb, custom_avatar_url '
+                avatar_urls = monitor_db.select_single('SELECT thumb, custom_avatar_url '
                                                 'FROM users WHERE user_id = ?',
                                                 [keys_dict['user_id']])
                 if avatar_urls:
-                    if not avatar_urls[0]['custom_avatar_url'] or \
-                            avatar_urls[0]['custom_avatar_url'] == avatar_urls[0]['thumb']:
-                        item['custom_avatar_url'] = item['thumb']
+                    if not avatar_urls['custom_avatar_url'] or \
+                            avatar_urls['custom_avatar_url'] == avatar_urls['thumb']:
+                        user['custom_avatar_url'] = user['thumb']
                 else:
-                    item['custom_avatar_url'] = item['thumb']
+                    user['custom_avatar_url'] = user['thumb']
 
-            monitor_db.upsert('users', item, keys_dict)
+            shared_libraries = user.pop('shared_libraries') if 'shared_libraries' in user else []
+
+            monitor_db.upsert('users', user, keys_dict)
+
+            shared_library_keys = monitor_db.select_single('SELECT id FROM users WHERE user_id = ?', [keys_dict['user_id']])
+            monitor_db.action('DELETE FROM user_shared_libraries WHERE id = ?', [shared_library_keys['id']])
+
+            if shared_libraries:
+                for shared_library in shared_libraries:
+                    server_id = shared_library.pop('server_id')
+                    server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
+                    if not server.CONFIG.PMS_IS_DELETED:
+                        shared_library_keys['server_id'] = server_id
+                        if 'shared_libraries' in shared_library:
+                            for k, v in enumerate(shared_library['shared_libraries']):
+                                shared_library['shared_libraries'][k] = str(libraries.get_section_index(server_id, v)).decode("utf-8")
+                            shared_library['shared_libraries'] = ';'.join(shared_library['shared_libraries'])
+                        elif 'server_token' in shared_library:
+                            libs = libraries.Libraries().get_sections(server_id=server_id)
+                            shared_library['shared_libraries'] = ';'.join([str(l['library_id']) for l in libs])
+
+                        if 'shared_libraries' in shared_library:
+                            monitor_db.upsert('user_shared_libraries', shared_library, shared_library_keys)
 
         logger.info(u"Tautulli Users :: Users list refreshed.")
         return True
@@ -81,7 +98,7 @@ class Users(object):
 
         custom_where = [['users.deleted_user', 0]]
 
-        if session.get_session_user_id():
+        if session.get_session_user_id() and int(session.get_session_access_level()) < 3:
             custom_where.append(['users.user_id', session.get_session_user_id()])
 
         if kwargs.get('user_id'):
@@ -99,6 +116,7 @@ class Users(object):
                    'MAX(session_history.started) AS last_seen',
                    'MAX(session_history.id) AS id',
                    'session_history_metadata.full_title AS last_played',
+                   'servers.pms_name AS last_server',
                    'session_history.ip_address',
                    'session_history.platform',
                    'session_history.player',
@@ -123,13 +141,16 @@ class Users(object):
                                           group_by=['users.user_id'],
                                           join_types=['LEFT OUTER JOIN',
                                                       'LEFT OUTER JOIN',
+                                                      'LEFT OUTER JOIN',
                                                       'LEFT OUTER JOIN'],
                                           join_tables=['session_history',
                                                        'session_history_metadata',
-                                                       'session_history_media_info'],
+                                                       'session_history_media_info',
+                                                       'servers'],
                                           join_evals=[['session_history.user_id', 'users.user_id'],
                                                       ['session_history.id', 'session_history_metadata.id'],
-                                                      ['session_history.id', 'session_history_media_info.id']],
+                                                      ['session_history.id', 'session_history_media_info.id'],
+                                                      ['session_history.server_id', 'servers.id']],
                                           kwargs=kwargs)
         except Exception as e:
             logger.warn(u"Tautulli Users :: Unable to execute database query for get_list: %s." % e)
@@ -163,6 +184,7 @@ class Users(object):
                    'duration': item['duration'],
                    'last_seen': item['last_seen'],
                    'last_played': item['last_played'],
+                   'last_server': item['last_server'],
                    'id': item['id'],
                    'ip_address': item['ip_address'],
                    'platform': platform,
@@ -177,7 +199,7 @@ class Users(object):
                    'transcode_decision': item['transcode_decision'],
                    'do_notify': helpers.checked(item['do_notify']),
                    'keep_history': helpers.checked(item['keep_history']),
-                   'allow_guest': helpers.checked(item['allow_guest'])
+                   'allow_guest': item['allow_guest']
                    }
 
             rows.append(row)
@@ -298,7 +320,7 @@ class Users(object):
                           'custom_avatar_url': custom_thumb,
                           'do_notify': do_notify,
                           'keep_history': keep_history,
-                          'allow_guest': allow_guest
+                          'allow_guest': allow_guest,
                           }
             try:
                 monitor_db.upsert('users', value_dict, key_dict)
@@ -318,8 +340,10 @@ class Users(object):
                           'do_notify': 0,
                           'keep_history': 1,
                           'allow_guest': 0,
+                          'access_level': 0,
                           'deleted_user': 0,
-                          'shared_libraries': ()
+                          'shared_libraries': (),
+                          'shared_servers': (),
                           }
 
         if user_id is None and not user and not email:
@@ -330,28 +354,29 @@ class Users(object):
 
             try:
                 if str(user_id).isdigit():
-                    query = 'SELECT user_id, username, friendly_name, thumb AS user_thumb, custom_avatar_url AS custom_thumb, ' \
+                    query = 'SELECT id, user_id, username, friendly_name, thumb AS user_thumb, custom_avatar_url AS custom_thumb, ' \
                             'email, is_admin, is_home_user, is_allow_sync, is_restricted, do_notify, keep_history, deleted_user, ' \
-                            'allow_guest, shared_libraries ' \
+                            'allow_guest ' \
                             'FROM users ' \
                             'WHERE user_id = ? '
                     result = monitor_db.select(query, args=[user_id])
                 elif user:
-                    query = 'SELECT user_id, username, friendly_name, thumb AS user_thumb, custom_avatar_url AS custom_thumb, ' \
+                    query = 'SELECT id, user_id, username, friendly_name, thumb AS user_thumb, custom_avatar_url AS custom_thumb, ' \
                             'email, is_admin, is_home_user, is_allow_sync, is_restricted, do_notify, keep_history, deleted_user, ' \
-                            'allow_guest, shared_libraries ' \
+                            'allow_guest ' \
                             'FROM users ' \
                             'WHERE username = ? COLLATE NOCASE '
                     result = monitor_db.select(query, args=[user])
                 elif email:
-                    query = 'SELECT user_id, username, friendly_name, thumb AS user_thumb, custom_avatar_url AS custom_thumb, ' \
+                    query = 'SELECT id, user_id, username, friendly_name, thumb AS user_thumb, custom_avatar_url AS custom_thumb, ' \
                             'email, is_admin, is_home_user, is_allow_sync, is_restricted, do_notify, keep_history, deleted_user, ' \
-                            'allow_guest, shared_libraries ' \
+                            'allow_guest ' \
                             'FROM users ' \
                             'WHERE email = ? COLLATE NOCASE '
                     result = monitor_db.select(query, args=[email])
                 else:
                     result = []
+
             except Exception as e:
                 logger.warn(u"Tautulli Users :: Unable to execute database query for get_details: %s." % e)
                 result = []
@@ -359,7 +384,7 @@ class Users(object):
             user_details = {}
             if result:
                 for item in result:
-                    if session.get_session_user_id():
+                    if session.get_session_user_id() and int(session.get_session_access_level()) < 3:
                         friendly_name = session.get_session_user()
                     elif item['friendly_name']:
                         friendly_name = item['friendly_name']
@@ -373,7 +398,16 @@ class Users(object):
                     else:
                         user_thumb = common.DEFAULT_USER_THUMB
 
-                    shared_libraries = tuple(item['shared_libraries'].split(';')) if item['shared_libraries'] else ()
+                    query = 'SELECT server_id, shared_libraries ' \
+                            'FROM user_shared_libraries ' \
+                            'WHERE id = ? '
+                    result_shared_libraries = monitor_db.select(query, args=[item['id']])
+                    shared_libraries = []
+                    shared_servers = []
+                    for item_shared_libraries in result_shared_libraries:
+                        sl = tuple(item_shared_libraries['shared_libraries'].split(';')) if item_shared_libraries['shared_libraries'] else ()
+                        shared_libraries.extend(sl)
+                        shared_servers.append(item_shared_libraries['server_id'])
 
                     user_details = {'user_id': item['user_id'],
                                     'username': item['username'],
@@ -388,7 +422,9 @@ class Users(object):
                                     'keep_history': item['keep_history'],
                                     'deleted_user': item['deleted_user'],
                                     'allow_guest': item['allow_guest'],
-                                    'shared_libraries': shared_libraries
+                                    'access_level': (9 if item['is_admin'] else item['allow_guest']),
+                                    'shared_libraries': shared_libraries,
+                                    'shared_servers': shared_servers,
                                     }
             return user_details
 
@@ -530,6 +566,7 @@ class Users(object):
         try:
             if str(user_id).isdigit():
                 query = 'SELECT session_history.id, session_history.media_type, ' \
+                        'session_history.server_id, ' \
                         'session_history.rating_key, session_history.parent_rating_key, session_history.grandparent_rating_key, ' \
                         'title, parent_title, grandparent_title, original_title, ' \
                         'thumb, parent_thumb, grandparent_thumb, media_index, parent_media_index, ' \
@@ -557,6 +594,7 @@ class Users(object):
 
                 recent_output = {'row_id': row['id'],
                                  'media_type': row['media_type'],
+                                 'server_id': row['server_id'],
                                  'rating_key': row['rating_key'],
                                  'parent_rating_key': row['parent_rating_key'],
                                  'grandparent_rating_key': row['grandparent_rating_key'],
@@ -579,9 +617,9 @@ class Users(object):
         monitor_db = database.MonitorDatabase()
 
         try:
-            query = 'SELECT user_id, username, friendly_name, thumb, custom_avatar_url, email, ' \
+            query = 'SELECT id, user_id, username, friendly_name, thumb, custom_avatar_url, email, ' \
                     'is_admin, is_home_user, is_allow_sync, is_restricted, ' \
-                    'do_notify, keep_history, allow_guest, server_token, shared_libraries, ' \
+                    'do_notify, keep_history, allow_guest, ' \
                     'filter_all, filter_movies, filter_tv, filter_music, filter_photos ' \
                     'FROM users WHERE deleted_user = 0'
             result = monitor_db.select(query=query)
@@ -603,14 +641,23 @@ class Users(object):
                     'do_notify': item['do_notify'],
                     'keep_history': item['keep_history'],
                     'allow_guest': item['allow_guest'],
-                    'server_token': item['server_token'],
-                    'shared_libraries': item['shared_libraries'],
                     'filter_all': item['filter_all'],
                     'filter_movies': item['filter_movies'],
                     'filter_tv': item['filter_tv'],
                     'filter_music': item['filter_music'],
                     'filter_photos': item['filter_photos'],
                     }
+
+            query = 'SELECT shared_libraries ' \
+                    'FROM user_shared_libraries ' \
+                    'WHERE id = ? '
+            result_shared_libraries = monitor_db.select(query, args=[item['id']])
+            shared_libraries = []
+            for item_shared_libraries in result_shared_libraries:
+                sl = tuple(item_shared_libraries['shared_libraries'].split(';')) if item_shared_libraries['shared_libraries'] else ()
+                shared_libraries.extend(sl)
+            user['shared_libraries'] = ';'.join(shared_libraries)
+
             users.append(user)
 
         return users
@@ -706,7 +753,7 @@ class Users(object):
         monitor_db = database.MonitorDatabase()
         
         user_cond = ''
-        if session.get_session_user_id():
+        if session.get_session_user_id() and int(session.get_session_access_level()) < 3:
             user_cond = 'AND user_id = %s ' % session.get_session_user_id()
 
         try:
@@ -723,12 +770,18 @@ class Users(object):
         
         return session.friendly_name_to_username(result)
     
-    def get_tokens(self, user_id=None):
+    def get_tokens(self, server_id=None, user_id=None):
         if user_id:
             try:
                 monitor_db = database.MonitorDatabase()
-                query = 'SELECT allow_guest, user_token, server_token FROM users ' \
-                        'WHERE user_id = ? AND deleted_user = 0'
+                where = ''
+                if server_id:
+                    where = ' AND user_shared_libraries.server_id = %s ' % server_id
+                query = 'SELECT users.allow_guest, user_shared_libraries.user_token, user_shared_libraries.server_token' \
+                        '  FROM users ' \
+                        ' WHERE users.user_id = ? AND users.deleted_user = 0 ' + where + \
+                        ' INNER JOIN user_shared_libraries ' \
+                        '    ON users.user_id = user_shared_libraries.id'
                 result = monitor_db.select_single(query, args=[user_id])
                 if result:
                     tokens = {'allow_guest': result['allow_guest'],
@@ -805,7 +858,7 @@ class Users(object):
 
         data_tables = datatables.DataTables()
 
-        if session.get_session_user_id():
+        if session.get_session_user_id() and int(session.get_session_access_level()) < 5:
             custom_where = [['user_login.user_id', session.get_session_user_id()]]
         else:
             custom_where = [['user_login.user_id', user_id]] if user_id else []

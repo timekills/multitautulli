@@ -152,8 +152,8 @@ def notify_conditions(notify_action=None, stream_data=None, timeline_data=None):
         #     return False
 
         if notify_action == 'on_concurrent':
-            pms_connect = pmsconnect.PmsConnect()
-            result = pms_connect.get_current_activity()
+            server = plexpy.PMS_SERVERS.get_server_by_id(stream_data['server_id'])
+            result = server.PMSCONNECTION.get_current_activity()
 
             user_sessions = []
             if result:
@@ -454,6 +454,7 @@ def set_notify_success(notification_id):
 
 
 def build_media_notify_params(notify_action=None, session=None, timeline=None, manual_trigger=False, **kwargs):
+    server = plexpy.PMS_SERVERS.get_server_by_id(session['server_id'])
     # Get time formats
     date_format = helpers.momentjs_to_arrow(plexpy.CONFIG.DATE_FORMAT)
     time_format = helpers.momentjs_to_arrow(plexpy.CONFIG.TIME_FORMAT)
@@ -504,9 +505,9 @@ def build_media_notify_params(notify_action=None, session=None, timeline=None, m
 
     child_metadata = grandchild_metadata = []
     for key in kwargs.pop('child_keys', []):
-        child_metadata.append(pmsconnect.PmsConnect().get_metadata_details(rating_key=key))
+        child_metadata.append(server.PMSCONNECTION.get_metadata_details(rating_key=key))
     for key in kwargs.pop('grandchild_keys', []):
-        grandchild_metadata.append(pmsconnect.PmsConnect().get_metadata_details(rating_key=key))
+        grandchild_metadata.append(server.PMSCONNECTION.get_metadata_details(rating_key=key))
 
     # Session values
     session = session or {}
@@ -543,8 +544,8 @@ def build_media_notify_params(notify_action=None, session=None, timeline=None, m
         plex_web_rating_key = notify_params['rating_key']
 
     notify_params['plex_url'] = '{web_url}#!/server/{pms_identifier}/details?key=%2Flibrary%2Fmetadata%2F{rating_key}'.format(
-        web_url=plexpy.CONFIG.PMS_WEB_URL,
-        pms_identifier=plexpy.CONFIG.PMS_IDENTIFIER,
+        web_url=server.CONFIG.PMS_WEB_URL,
+        pms_identifier=server.CONFIG.PMS_IDENTIFIER,
         rating_key=plex_web_rating_key)
 
     # Get media IDs from guid and build URLs
@@ -581,7 +582,8 @@ def build_media_notify_params(notify_action=None, session=None, timeline=None, m
     # Get TheMovieDB info
     if plexpy.CONFIG.THEMOVIEDB_LOOKUP:
         if notify_params.get('themoviedb_id'):
-            themoveidb_json = get_themoviedb_info(rating_key=rating_key,
+            themoveidb_json = get_themoviedb_info(server_id=server.CONFIG.ID,
+                                                  rating_key=rating_key,
                                                   media_type=notify_params['media_type'],
                                                   themoviedb_id=notify_params['themoviedb_id'])
 
@@ -597,7 +599,8 @@ def build_media_notify_params(notify_action=None, session=None, timeline=None, m
             else:
                 lookup_key = rating_key
 
-            themoviedb_info = lookup_themoviedb_by_id(rating_key=lookup_key,
+            themoviedb_info = lookup_themoviedb_by_id(server_id=server.CONFIG.ID,
+                                                      rating_key=lookup_key,
                                                       thetvdb_id=notify_params.get('thetvdb_id'),
                                                       imdb_id=notify_params.get('imdb_id'))
             notify_params.update(themoviedb_info)
@@ -612,7 +615,8 @@ def build_media_notify_params(notify_action=None, session=None, timeline=None, m
             else:
                 lookup_key = rating_key
 
-            tvmaze_info = lookup_tvmaze_by_id(rating_key=lookup_key,
+            tvmaze_info = lookup_tvmaze_by_id(server_id=server.CONFIG.ID,
+                                              rating_key=lookup_key,
                                               thetvdb_id=notify_params.get('thetvdb_id'),
                                               imdb_id=notify_params.get('imdb_id'))
             notify_params.update(tvmaze_info)
@@ -723,13 +727,13 @@ def build_media_notify_params(notify_action=None, session=None, timeline=None, m
         'tautulli_remote': plexpy.CONFIG.GIT_REMOTE,
         'tautulli_branch': plexpy.CONFIG.GIT_BRANCH,
         'tautulli_commit': plexpy.CURRENT_VERSION,
-        'server_name': plexpy.CONFIG.PMS_NAME,
-        'server_ip': plexpy.CONFIG.PMS_IP,
-        'server_port': plexpy.CONFIG.PMS_PORT,
-        'server_url': plexpy.CONFIG.PMS_URL,
-        'server_machine_id': plexpy.CONFIG.PMS_IDENTIFIER,
-        'server_platform': plexpy.CONFIG.PMS_PLATFORM,
-        'server_version': plexpy.CONFIG.PMS_VERSION,
+        'server_name': server.CONFIG.PMS_NAME,
+        'server_ip': server.CONFIG.PMS_IP,
+        'server_port': server.CONFIG.PMS_PORT,
+        'server_url': server.CONFIG.PMS_URL,
+        'server_machine_id': server.CONFIG.PMS_IDENTIFIER,
+        'server_platform': server.CONFIG.PMS_PLATFORM,
+        'server_version': server.CONFIG.PMS_VERSION,
         'action': notify_action.split('on_')[-1],
         'current_year': now.year,
         'current_month': now.month,
@@ -926,12 +930,10 @@ def build_media_notify_params(notify_action=None, session=None, timeline=None, m
     return available_params
 
 
-def build_server_notify_params(notify_action=None, **kwargs):
+def build_server_notify_params(notify_action=None, server_id=None, **kwargs):
     # Get time formats
     date_format = plexpy.CONFIG.DATE_FORMAT.replace('Do','')
     time_format = plexpy.CONFIG.TIME_FORMAT.replace('Do','')
-
-    update_channel = pmsconnect.PmsConnect().get_server_update_channel()
 
     pms_download_info = defaultdict(str, kwargs.pop('pms_download_info', {}))
     plexpy_download_info = defaultdict(str, kwargs.pop('plexpy_download_info', {}))
@@ -939,19 +941,42 @@ def build_server_notify_params(notify_action=None, **kwargs):
     now = arrow.now()
     now_iso = now.isocalendar()
 
+    if server_id:
+        server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
+        server_name = server.CONFIG.PMS_NAME
+        server_ip = server.CONFIG.PMS_IP
+        server_port = server.CONFIG.PMS_PORT
+        server_url = server.CONFIG.PMS_URL
+        server_platform = server.CONFIG.PMS_PLATFORM
+        server_version = server.CONFIG.PMS_VERSION
+        server_identifier = server.CONFIG.PMS_IDENTIFIER
+        if server.WS_CONNECTED:
+            update_channel = server.PMSCONNECTION.get_server_update_channel()
+        else:
+            update_channel = ''
+    else:
+        server_name = ''
+        server_ip = ''
+        server_port = ''
+        server_url = ''
+        server_platform = ''
+        server_version = ''
+        server_identifier = ''
+        update_channel = ''
+
     available_params = {
         # Global paramaters
         'tautulli_version': common.RELEASE,
         'tautulli_remote': plexpy.CONFIG.GIT_REMOTE,
         'tautulli_branch': plexpy.CONFIG.GIT_BRANCH,
         'tautulli_commit': plexpy.CURRENT_VERSION,
-        'server_name': plexpy.CONFIG.PMS_NAME,
-        'server_ip': plexpy.CONFIG.PMS_IP,
-        'server_port': plexpy.CONFIG.PMS_PORT,
-        'server_url': plexpy.CONFIG.PMS_URL,
-        'server_platform': plexpy.CONFIG.PMS_PLATFORM,
-        'server_version': plexpy.CONFIG.PMS_VERSION,
-        'server_machine_id': plexpy.CONFIG.PMS_IDENTIFIER,
+        'server_name': server_name,
+        'server_ip': server_ip,
+        'server_port': server_port,
+        'server_url': server_url,
+        'server_platform': server_platform,
+        'server_version': server_version,
+        'server_machine_id': server_identifier,
         'action': notify_action.split('on_')[-1],
         'current_year': now.year,
         'current_month': now.month,
@@ -1147,8 +1172,10 @@ def format_group_index(group_keys):
     return ','.join(num) or '0', ','.join(num00) or '00'
 
 
-def get_img_info(img=None, rating_key=None, title='', width=1000, height=1500,
+def get_img_info(img=None, server_id=None, rating_key=None, title='', width=1000, height=1500,
                  opacity=100, background='000000', blur=0, fallback=None):
+    server =plexpy.PMS_SERVERS.get_server_by_id(server_id)
+
     img_info = {'img_title': '', 'img_url': ''}
 
     if not rating_key and not img:
@@ -1188,6 +1215,7 @@ def get_img_info(img=None, rating_key=None, title='', width=1000, height=1500,
 
     else:
         image_info = {'img': img,
+                      'server_id': server_id,
                       'rating_key': rating_key,
                       'width': width,
                       'height': height,
@@ -1204,8 +1232,7 @@ def get_img_info(img=None, rating_key=None, title='', width=1000, height=1500,
         img_info = database_img_info[0]
 
     elif not database_img_info and img:
-        pms_connect = pmsconnect.PmsConnect()
-        result = pms_connect.get_image(refresh=True, **image_info)
+        result = server.PMSCONNECTION.get_image(refresh=True, **image_info)
 
         if result and result[0]:
             img_url = delete_hash = ''
@@ -1249,7 +1276,7 @@ def get_img_info(img=None, rating_key=None, title='', width=1000, height=1500,
     return img_info
 
 
-def set_hash_image_info(img=None, rating_key=None, width=750, height=1000,
+def set_hash_image_info(img=None, server_id=None, rating_key=None, width=750, height=1000,
                         opacity=100, background='000000', blur=0, fallback=None,
                         add_to_db=True):
     if not rating_key and not img:
@@ -1265,13 +1292,14 @@ def set_hash_image_info(img=None, rating_key=None, width=750, height=1000,
     img = '/'.join(img_split[:5])
     rating_key = rating_key or img_split[3]
 
-    img_string = '{}.{}.{}.{}.{}.{}.{}.{}'.format(
-        plexpy.CONFIG.PMS_UUID, img, rating_key, width, height, opacity, background, blur, fallback)
+    img_string = '{}.{}.{}.{}.{}.{}.{}.{}.{}.{}'.format(
+        plexpy.CONFIG.PMS_UUID, img, server_id, rating_key, width, height, opacity, background, blur, fallback)
     img_hash = hashlib.sha256(img_string).hexdigest()
 
     if add_to_db:
         keys = {'img_hash': img_hash}
         values = {'img': img,
+                  'server_id': server_id,
                   'rating_key': rating_key,
                   'width': width,
                   'height': height,
@@ -1293,13 +1321,13 @@ def get_hash_image_info(img_hash=None):
     return result
 
 
-def lookup_tvmaze_by_id(rating_key=None, thetvdb_id=None, imdb_id=None):
+def lookup_tvmaze_by_id(server_id=None, rating_key=None, thetvdb_id=None, imdb_id=None):
     db = database.MonitorDatabase()
 
     try:
         query = 'SELECT imdb_id, tvmaze_id, tvmaze_url FROM tvmaze_lookup ' \
-                'WHERE rating_key = ?'
-        tvmaze_info = db.select_single(query, args=[rating_key])
+                'WHERE server_id = ? AND rating_key = ?'
+        tvmaze_info = db.select_single(query, args=[server_id, rating_key])
     except Exception as e:
         logger.warn(u"Tautulli NotificationHandler :: Unable to execute database query for lookup_tvmaze_by_tvdb_id: %s." % e)
         return {}
@@ -1323,7 +1351,8 @@ def lookup_tvmaze_by_id(rating_key=None, thetvdb_id=None, imdb_id=None):
             tvmaze_url = tvmaze_json.get('url', '')
             
             keys = {'tvmaze_id': tvmaze_id}
-            tvmaze_info = {'rating_key': rating_key,
+            tvmaze_info = {'server_id': server_id,
+                           'rating_key': rating_key,
                            'thetvdb_id': thetvdb_id,
                            'imdb_id': imdb_id,
                            'tvmaze_url': tvmaze_url,
@@ -1342,13 +1371,13 @@ def lookup_tvmaze_by_id(rating_key=None, thetvdb_id=None, imdb_id=None):
     return tvmaze_info
 
 
-def lookup_themoviedb_by_id(rating_key=None, thetvdb_id=None, imdb_id=None):
+def lookup_themoviedb_by_id(server_id=None, rating_key=None, thetvdb_id=None, imdb_id=None):
     db = database.MonitorDatabase()
 
     try:
         query = 'SELECT thetvdb_id, imdb_id, themoviedb_id, themoviedb_url FROM themoviedb_lookup ' \
-                'WHERE rating_key = ?'
-        themoviedb_info = db.select_single(query, args=[rating_key])
+                'WHERE server_id = ? AND rating_key = ?'
+        themoviedb_info = db.select_single(query, args=[server_id, rating_key])
     except Exception as e:
         logger.warn(u"Tautulli NotificationHandler :: Unable to execute database query for lookup_themoviedb_by_imdb_id: %s." % e)
         return {}
@@ -1383,7 +1412,8 @@ def lookup_themoviedb_by_id(rating_key=None, thetvdb_id=None, imdb_id=None):
                                                       themoviedb_id=themoviedb_id)
 
                 keys = {'themoviedb_id': themoviedb_id}
-                themoviedb_info = {'rating_key': rating_key,
+                themoviedb_info = {'server_id': server_id,
+                                   'rating_key': rating_key,
                                    'thetvdb_id': thetvdb_id,
                                    'imdb_id': imdb_id or themoviedb_json.get('imdb_id'),
                                    'themoviedb_url': themoviedb_url,
@@ -1404,7 +1434,7 @@ def lookup_themoviedb_by_id(rating_key=None, thetvdb_id=None, imdb_id=None):
     return themoviedb_info
 
 
-def get_themoviedb_info(rating_key=None, media_type=None, themoviedb_id=None):
+def get_themoviedb_info(server_id=None, rating_key=None, media_type=None, themoviedb_id=None):
     if media_type in ('show', 'season', 'episode'):
         media_type = 'tv'
 
@@ -1412,8 +1442,8 @@ def get_themoviedb_info(rating_key=None, media_type=None, themoviedb_id=None):
 
     try:
         query = 'SELECT themoviedb_json FROM themoviedb_lookup ' \
-                'WHERE rating_key = ?'
-        result = db.select_single(query, args=[rating_key])
+                'WHERE server_id = ? AND rating_key = ?'
+        result = db.select_single(query, args=[server_id, rating_key])
     except Exception as e:
         logger.warn(u"Tautulli NotificationHandler :: Unable to execute database query for get_themoviedb_info: %s." % e)
         return {}
@@ -1437,7 +1467,8 @@ def get_themoviedb_info(rating_key=None, media_type=None, themoviedb_id=None):
         themoviedb_url = 'https://www.themoviedb.org/{}/{}'.format(media_type, themoviedb_id)
 
         keys = {'themoviedb_id': themoviedb_id}
-        themoviedb_info = {'rating_key': rating_key,
+        themoviedb_info = {'server_id': server_id,
+                           'rating_key': rating_key,
                            'imdb_id': themoviedb_json.get('imdb_id'),
                            'themoviedb_url': themoviedb_url,
                            'themoviedb_json': json.dumps(themoviedb_json)

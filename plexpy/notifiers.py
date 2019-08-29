@@ -216,7 +216,7 @@ def available_notification_actions():
                 'name': 'on_play',
                 'description': 'Trigger a notification when a stream is started.',
                 'subject': 'Tautulli ({server_name})',
-                'body': '{user} ({player}) started playing {title}.',
+                'body': '{user} ({player}) started playing {title} on {server_name}.',
                 'icon': 'fa-play',
                 'media_types': ('movie', 'episode', 'track')
                 },
@@ -224,7 +224,7 @@ def available_notification_actions():
                 'name': 'on_stop',
                 'description': 'Trigger a notification when a stream is stopped.',
                 'subject': 'Tautulli ({server_name})',
-                'body': '{user} ({player}) has stopped {title}.',
+                'body': '{user} ({player}) has stopped {title} on {server_name}.',
                 'icon': 'fa-stop',
                 'media_types': ('movie', 'episode', 'track')
                 },
@@ -232,7 +232,7 @@ def available_notification_actions():
                 'name': 'on_pause',
                 'description': 'Trigger a notification when a stream is paused.',
                 'subject': 'Tautulli ({server_name})',
-                'body': '{user} ({player}) has paused {title}.',
+                'body': '{user} ({player}) has paused {title} on {server_name}.',
                 'icon': 'fa-pause',
                 'media_types': ('movie', 'episode', 'track')
                 },
@@ -240,7 +240,7 @@ def available_notification_actions():
                 'name': 'on_resume',
                 'description': 'Trigger a notification when a stream is resumed.',
                 'subject': 'Tautulli ({server_name})',
-                'body': '{user} ({player}) has resumed {title}.',
+                'body': '{user} ({player}) has resumed {title} on {server_name}.',
                 'icon': 'fa-play',
                 'media_types': ('movie', 'episode', 'track')
                 },
@@ -248,7 +248,7 @@ def available_notification_actions():
                 'name': 'on_change',
                 'description': 'Trigger a notification when a stream changes transcode decision.',
                 'subject': 'Tautulli ({server_name})',
-                'body': '{user} ({player}) has changed transcode decision for {title}.',
+                'body': '{user} ({player}) has changed transcode decision for {title} on {server_name}.',
                 'icon': 'fa-exchange-alt',
                 'media_types': ('movie', 'episode', 'track')
                 },
@@ -256,7 +256,7 @@ def available_notification_actions():
                 'name': 'on_watched',
                 'description': 'Trigger a notification when a video stream reaches the specified watch percentage.',
                 'subject': 'Tautulli ({server_name})',
-                'body': '{user} ({player}) has watched {title}.',
+                'body': '{user} ({player}) has watched {title} on {server_name}.',
                 'icon': 'fa-eye',
                 'media_types': ('movie', 'episode', 'track')
                 },
@@ -264,7 +264,7 @@ def available_notification_actions():
                 'name': 'on_buffer',
                 'description': 'Trigger a notification when a stream exceeds the specified buffer threshold.',
                 'subject': 'Tautulli ({server_name})',
-                'body': '{user} ({player}) is buffering {title}.',
+                'body': '{user} ({player}) is buffering {title} on {server_name}.',
                 'icon': 'fa-spinner',
                 'media_types': ('movie', 'episode', 'track')
                 },
@@ -272,7 +272,7 @@ def available_notification_actions():
                 'name': 'on_concurrent',
                 'description': 'Trigger a notification when a user exceeds the concurrent stream threshold.',
                 'subject': 'Tautulli ({server_name})',
-                'body': '{user} has {user_streams} concurrent streams.',
+                'body': '{user} has {user_streams} concurrent streams on {server_name}.',
                 'icon': 'fa-arrow-circle-o-right',
                 'media_types': ('movie', 'episode', 'track')
                 },
@@ -280,7 +280,7 @@ def available_notification_actions():
                 'name': 'on_newdevice',
                 'description': 'Trigger a notification when a user streams from a new device.',
                 'subject': 'Tautulli ({server_name})',
-                'body': '{user} is streaming from a new device: {player}.',
+                'body': '{user} is streaming from a new device: {player} on {server_name}.',
                 'icon': 'fa-desktop',
                 'media_types': ('movie', 'episode', 'track')
                 },
@@ -288,7 +288,7 @@ def available_notification_actions():
                 'name': 'on_created',
                 'description': 'Trigger a notification when a media item is added to the Plex Media Server.',
                 'subject': 'Tautulli ({server_name})',
-                'body': '{title} was recently added to Plex.',
+                'body': '{title} was recently added to Plex on {server_name}.',
                 'icon': 'fa-download',
                 'media_types': ('movie', 'show', 'season', 'episode', 'artist', 'album', 'track')
                 },
@@ -296,7 +296,7 @@ def available_notification_actions():
                 'name': 'on_intdown',
                 'description': 'Trigger a notification when the Plex Media Server cannot be reached internally.',
                 'subject': 'Tautulli ({server_name})',
-                'body': 'The Plex Media Server is down.',
+                'body': 'The Plex Media Server ({server_name}) is down.',
                 'icon': 'fa-server',
                 'media_types': ('server',)
                 },
@@ -304,15 +304,31 @@ def available_notification_actions():
                 'name': 'on_intup',
                 'description': 'Trigger a notification when the Plex Media Server can be reached internally after being down.',
                 'subject': 'Tautulli ({server_name})',
-                'body': 'The Plex Media Server is back up.',
+                'body': 'The Plex Media Server ({server_name}) is back up.',
                 'icon': 'fa-server',
+                'media_types': ('server',)
+                },
+               {'label': 'Rclone Mount Down',
+                'name': 'on_rclonedown',
+                'description': 'Trigger a notification when the rclone mount is down.',
+                'subject': 'Tautulli ({server_name})',
+                'body': 'Tautulli has detected that the rclone mount is down on {server_name}.',
+                'icon': 'fa-refresh',
+                'media_types': ('server',)
+                },
+               {'label': 'Rclone Mount Back Up',
+                'name': 'on_rcloneup',
+                'description': 'Trigger a notification when the rclone mount is back up.',
+                'subject': 'Tautulli ({server_name})',
+                'body': 'Tautulli has detected that the rclone mount is back up on {server_name}.',
+                'icon': 'fa-refresh',
                 'media_types': ('server',)
                 },
                {'label': 'Plex Remote Access Down',
                 'name': 'on_extdown',
                 'description': 'Trigger a notification when the Plex Media Server cannot be reached externally.',
                 'subject': 'Tautulli ({server_name})',
-                'body': 'The Plex Media Server remote access is down.',
+                'body': 'The Plex Media Server ({server_name}) remote access is down.',
                 'icon': 'fa-server',
                 'media_types': ('server',)
                 },
@@ -320,7 +336,7 @@ def available_notification_actions():
                 'name': 'on_extup',
                 'description': 'Trigger a notification when the Plex Media Server can be reached externally after being down.',
                 'subject': 'Tautulli ({server_name})',
-                'body': 'The Plex Media Server remote access is back up.',
+                'body': 'The Plex Media Server ({server_name}) remote access is back up.',
                 'icon': 'fa-server',
                 'media_types': ('server',)
                 },
@@ -328,7 +344,7 @@ def available_notification_actions():
                 'name': 'on_pmsupdate',
                 'description': 'Trigger a notification when an update for the Plex Media Server is available.',
                 'subject': 'Tautulli ({server_name})',
-                'body': 'An update is available for the Plex Media Server (version {update_version}).',
+                'body': 'An update is available for the {server_name} (version {update_version}).',
                 'icon': 'fa-refresh',
                 'media_types': ('server',)
                 },
@@ -3032,7 +3048,6 @@ class SCRIPTS(Notifier):
         # Common environment variables
         env = os.environ.copy()
         env.update({
-            'PLEX_URL': plexpy.CONFIG.PMS_URL,
             'PLEX_TOKEN': plexpy.CONFIG.PMS_TOKEN,
             'TAUTULLI_URL': helpers.get_plexpy_url(hostname='localhost'),
             'TAUTULLI_PUBLIC_URL': plexpy.CONFIG.HTTP_BASE_URL + plexpy.HTTP_ROOT,
@@ -3126,7 +3141,7 @@ class SCRIPTS(Notifier):
 
         # For manual notifications
         # if script_args and isinstance(script_args, basestring):
-        #     # attemps for format it for the user
+        #     # attempts to format it for the user
         #     script_args = [arg for arg in shlex.split(script_args.encode(plexpy.SYS_ENCODING, 'ignore'))]
 
         # Windows handles unicode very badly.

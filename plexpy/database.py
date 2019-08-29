@@ -19,6 +19,7 @@ import sqlite3
 import shutil
 import threading
 import time
+import json
 
 import plexpy
 import logger
@@ -200,6 +201,8 @@ class MonitorDatabase(object):
                 self.action(insert_query, value_dict.values() + key_dict.values())
             except sqlite3.IntegrityError:
                 logger.info(u"Tautulli Database :: Queries failed: %s and %s", update_query, insert_query)
+                logger.debug(u"Tautulli Database :: Keys:   %s", json.dumps(key_dict))
+                logger.debug(u"Tautulli Database :: Values: %s", json.dumps(value_dict))
 
         # We want to know if it was an update or insert
         return trans_type
