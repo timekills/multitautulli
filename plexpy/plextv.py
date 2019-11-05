@@ -57,11 +57,11 @@ class PlexTV(object):
                 logger.error(u"Tautulli PlexTV :: PlexTV called, but no token provided.")
                 return
 
-        self.request_handler = http_handler.HTTPHandler(urls=self.urls,
-                                                        token=self.token,
-                                                        timeout=self.timeout,
-                                                        ssl_verify=self.ssl_verify,
-                                                        headers=headers)
+        self.http_handler = http_handler.HTTPHandler(urls=self.urls,
+                                                     token=self.token,
+                                                     timeout=self.timeout,
+                                                     ssl_verify=self.ssl_verify,
+                                                     headers=headers)
 
         plexpass = self.get_plexpass_status()
         plexpy.CONFIG.PMS_PLEXPASS = plexpass
@@ -72,12 +72,13 @@ class PlexTV(object):
         base64string = base64.b64encode(('%s:%s' % (self.username, self.password)).encode('utf-8'))
         headers = {'Content-Type': 'application/xml; charset=utf-8',
                    'Authorization': 'Basic %s' % base64string}
-        
-        request = self.request_handler.make_request(uri=uri,
-                                                    request_type='POST',
-                                                    headers=headers,
-                                                    output_format=output_format,
-                                                    no_token=True)
+
+        request_handler = self.http_handler
+        request = request_handler.make_request(uri=uri,
+                                               request_type='POST',
+                                               headers=headers,
+                                               output_format=output_format,
+                                               no_token=True)
 
         return request
 
@@ -147,18 +148,19 @@ class PlexTV(object):
         return server_tokens
 
     def get_plextv_pin(self, pin='', output_format=''):
+        request_handler = self.http_handler
         if pin:
             uri = '/api/v2/pins/' + pin
-            request = self.request_handler.make_request(uri=uri,
-                                                        request_type='GET',
-                                                        output_format=output_format,
-                                                        no_token=True)
+            request = request_handler.make_request(uri=uri,
+                                                   request_type='GET',
+                                                   output_format=output_format,
+                                                   no_token=True)
         else:
             uri = '/api/v2/pins?strong=true'
-            request = self.request_handler.make_request(uri=uri,
-                                                        request_type='POST',
-                                                        output_format=output_format,
-                                                        no_token=True)
+            request = request_handler.make_request(uri=uri,
+                                                   request_type='POST',
+                                                   output_format=output_format,
+                                                   no_token=True)
         return request
 
     def get_pin(self, pin=''):
@@ -194,104 +196,116 @@ class PlexTV(object):
             return []
 
     def get_plextv_friends(self, output_format=''):
+        request_handler = self.http_handler
         uri = '/api/users'
-        request = self.request_handler.make_request(uri=uri,
-                                                    request_type='GET',
-                                                    output_format=output_format)
+        request = request_handler.make_request(uri=uri,
+                                               request_type='GET',
+                                               output_format=output_format)
 
         return request
 
     def get_plextv_user_details(self, output_format=''):
+        request_handler = self.http_handler
         uri = '/users/account'
-        request = self.request_handler.make_request(uri=uri,
-                                                    request_type='GET',
-                                                    output_format=output_format)
+        request = request_handler.make_request(uri=uri,
+                                               request_type='GET',
+                                               output_format=output_format)
 
         return request
 
     def get_plextv_devices_list(self, output_format=''):
+        request_handler = self.http_handler
         uri = '/devices.xml'
-        request = self.request_handler.make_request(uri=uri,
-                                                    request_type='GET',
-                                                    output_format=output_format)
+        request = request_handler.make_request(uri=uri,
+                                               request_type='GET',
+                                               output_format=output_format)
 
         return request
 
     def get_plextv_server_list(self, output_format=''):
+        request_handler = self.http_handler
         uri = '/pms/servers.xml'
-        request = self.request_handler.make_request(uri=uri,
-                                                    request_type='GET',
-                                                    output_format=output_format)
+        request = request_handler.make_request(uri=uri,
+                                               request_type='GET',
+                                               output_format=output_format)
 
         return request
 
     def get_plextv_shared_servers(self, machine_id='', output_format=''):
+        request_handler = self.http_handler
         uri = '/api/servers/%s/shared_servers' % machine_id
-        request = self.request_handler.make_request(uri=uri,
-                                                    request_type='GET',
-                                                    output_format=output_format)
+        request = request_handler.make_request(uri=uri,
+                                               request_type='GET',
+                                               output_format=output_format)
 
         return request
 
     def get_plextv_sync_lists(self, machine_id='', output_format=''):
+        request_handler = self.http_handler
         uri = '/servers/%s/sync_lists' % machine_id
-        request = self.request_handler.make_request(uri=uri,
-                                                    request_type='GET',
-                                                    output_format=output_format)
+        request = request_handler.make_request(uri=uri,
+                                               request_type='GET',
+                                               output_format=output_format)
 
         return request
 
     def get_plextv_resources(self, include_https=False, output_format=''):
+        request_handler = self.http_handler
         if include_https:
             uri = '/api/resources?includeHttps=1'
         else:
             uri = '/api/resources'
-        request = self.request_handler.make_request(uri=uri,
-                                                    request_type='GET',
-                                                    output_format=output_format)
+        request = request_handler.make_request(uri=uri,
+                                               request_type='GET',
+                                               output_format=output_format)
 
         return request
 
     def get_plextv_downloads(self, plexpass=False, output_format=''):
+        request_handler = self.http_handler
         if plexpass:
             uri = '/api/downloads/5.json?channel=plexpass'
         else:
             uri = '/api/downloads/1.json'
-        request = self.request_handler.make_request(uri=uri,
-                                                    request_type='GET',
-                                                    output_format=output_format)
+        request = request_handler.make_request(uri=uri,
+                                               request_type='GET',
+                                               output_format=output_format)
 
         return request
 
     def delete_plextv_device(self, device_id='', output_format=''):
+        request_handler = self.http_handler
         uri = '/devices/%s.xml' % device_id
-        request = self.request_handler.make_request(uri=uri,
-                                                    request_type='DELETE',
-                                                    output_format=output_format)
+        request = request_handler.make_request(uri=uri,
+                                               request_type='DELETE',
+                                               output_format=output_format)
 
         return request
 
     def delete_plextv_device_sync_lists(self, client_id='', output_format=''):
+        request_handler = self.http_handler
         uri = '/devices/%s/sync_items' % client_id
-        request = self.request_handler.make_request(uri=uri,
-                                                    request_type='GET',
-                                                    output_format=output_format)
+        request = request_handler.make_request(uri=uri,
+                                               request_type='GET',
+                                               output_format=output_format)
 
         return request
 
     def delete_plextv_sync(self, client_id='', sync_id='', output_format=''):
+        request_handler = self.http_handler
         uri = '/devices/%s/sync_items/%s' % (client_id, sync_id)
-        request = self.request_handler.make_request(uri=uri,
-                                                    request_type='DELETE',
-                                                    output_format=output_format)
+        request = request_handler.make_request(uri=uri,
+                                               request_type='DELETE',
+                                               output_format=output_format)
 
         return request
 
     def cloud_server_status(self, output_format=''):
+        request_handler = self.http_handler
         uri = '/api/v2/cloud_server'
-        request = self.request_handler.make_request(uri=uri,
-                                                    request_type='GET',
-                                                    output_format=output_format)
+        request = request_handler.make_request(uri=uri,
+                                               request_type='GET',
+                                               output_format=output_format)
 
         return request
 

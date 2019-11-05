@@ -62,9 +62,9 @@ class PmsConnect(object):
             else:
                 self.token = plexpy.CONFIG.PMS_TOKEN
 
-        self.request_handler = http_handler.HTTPHandler(urls=self.url,
-                                                        token=self.token,
-                                                        timeout=self.timeout)
+        self.http_handler = http_handler.HTTPHandler(urls=self.url,
+                                                     token=self.token,
+                                                     timeout=self.timeout)
 
     def get_sessions(self, output_format=''):
         """
@@ -74,7 +74,7 @@ class PmsConnect(object):
 
         Output: array
         """
-        request_handler = http_handler.HTTPHandler(urls=self.url, token=self.token, timeout=self.timeout)
+        request_handler = self.http_handler
         uri = '/status/sessions'
         request = request_handler.make_request(uri=uri,
                                                request_type='GET',
@@ -90,7 +90,7 @@ class PmsConnect(object):
 
         Output: array
         """
-        request_handler = http_handler.HTTPHandler(urls=self.url, token=self.token, timeout=self.timeout)
+        request_handler = self.http_handler
         uri = '/status/sessions/terminate?sessionId=%s&reason=%s' % (session_id, reason)
         request = request_handler.make_request(uri=uri,
                                                request_type='GET',
@@ -107,7 +107,7 @@ class PmsConnect(object):
 
         Output: array
         """
-        request_handler = http_handler.HTTPHandler(urls=self.url, token=self.token, timeout=self.timeout)
+        request_handler = self.http_handler
         uri = '/library/metadata/' + rating_key
         request = request_handler.make_request(uri=uri,
                                                request_type='GET',
@@ -124,7 +124,7 @@ class PmsConnect(object):
 
         Output: array
         """
-        request_handler = http_handler.HTTPHandler(urls=self.url, token=self.token, timeout=self.timeout)
+        request_handler = self.http_handler
         uri = '/library/metadata/' + rating_key + '/children'
         request = request_handler.make_request(uri=uri,
                                                request_type='GET',
@@ -141,7 +141,7 @@ class PmsConnect(object):
 
         Output: array
         """
-        request_handler = http_handler.HTTPHandler(urls=self.url, token=self.token, timeout=self.timeout)
+        request_handler = self.http_handler
         uri = '/library/metadata/' + rating_key + '/grandchildren'
         request = request_handler.make_request(uri=uri,
                                                request_type='GET',
@@ -158,7 +158,7 @@ class PmsConnect(object):
 
         Output: array
         """
-        request_handler = http_handler.HTTPHandler(urls=self.url, token=self.token, timeout=self.timeout)
+        request_handler = self.http_handler
         uri = '/library/recentlyAdded?X-Plex-Container-Start=%s&X-Plex-Container-Size=%s' % (start, count)
         request = request_handler.make_request(uri=uri,
                                                request_type='GET',
@@ -175,7 +175,7 @@ class PmsConnect(object):
 
         Output: array
         """
-        request_handler = http_handler.HTTPHandler(urls=self.url, token=self.token, timeout=self.timeout)
+        request_handler = self.http_handler
         uri = '/library/sections/%s/recentlyAdded?X-Plex-Container-Start=%s&X-Plex-Container-Size=%s' % (section_id, start, count)
         request = request_handler.make_request(uri=uri,
                                                request_type='GET',
@@ -192,7 +192,7 @@ class PmsConnect(object):
 
         Output: array
         """
-        request_handler = http_handler.HTTPHandler(urls=self.url, token=self.token, timeout=self.timeout)
+        request_handler = self.http_handler
         uri = '/hubs/metadata/' + rating_key + '/related'
         request = request_handler.make_request(uri=uri,
                                                request_type='GET',
@@ -209,7 +209,7 @@ class PmsConnect(object):
 
         Output: array
         """
-        request_handler = http_handler.HTTPHandler(urls=self.url, token=self.token, timeout=self.timeout)
+        request_handler = self.http_handler
         uri = '/library/metadata/' + rating_key + '/allLeaves'
         request = request_handler.make_request(uri=uri,
                                                request_type='GET',
@@ -225,7 +225,7 @@ class PmsConnect(object):
 
         Output: array
         """
-        request_handler = http_handler.HTTPHandler(urls=self.url, token=self.token, timeout=self.timeout)
+        request_handler = self.http_handler
         uri = '/servers'
         request = request_handler.make_request(uri=uri,
                                                request_type='GET',
@@ -241,7 +241,7 @@ class PmsConnect(object):
 
         Output: array
         """
-        request_handler = http_handler.HTTPHandler(urls=self.url, token=self.token, timeout=self.timeout)
+        request_handler = self.http_handler
         uri = '/:/prefs'
         request = request_handler.make_request(uri=uri,
                                                request_type='GET',
@@ -257,7 +257,7 @@ class PmsConnect(object):
 
         Output: array
         """
-        request_handler = http_handler.HTTPHandler(urls=self.url, token=self.token, timeout=self.timeout)
+        request_handler = self.http_handler
         uri = '/identity'
         request = request_handler.make_request(uri=uri,
                                                request_type='GET',
@@ -273,7 +273,7 @@ class PmsConnect(object):
 
         Output: array
         """
-        request_handler = http_handler.HTTPHandler(urls=self.url, token=self.token, timeout=self.timeout)
+        request_handler = self.http_handler
         uri = '/library/sections'
         request = request_handler.make_request(uri=uri,
                                                request_type='GET',
@@ -292,7 +292,7 @@ class PmsConnect(object):
         count = '&X-Plex-Container-Size=' + count if count else ''
         label_key = '&label=' + label_key if label_key else ''
 
-        request_handler = http_handler.HTTPHandler(urls=self.url, token=self.token, timeout=self.timeout)
+        request_handler = self.http_handler
         uri = '/library/sections/' + section_id + '/' + list_type + '?X-Plex-Container-Start=0' + count + sort_type + label_key
         request = request_handler.make_request(uri=uri,
                                                request_type='GET',
@@ -308,7 +308,7 @@ class PmsConnect(object):
 
         Output: array
         """
-        request_handler = http_handler.HTTPHandler(urls=self.url, token=self.token, timeout=self.timeout)
+        request_handler = self.http_handler
         uri = '/library/sections/' + section_id + '/label'
         request = request_handler.make_request(uri=uri,
                                                request_type='GET',
@@ -325,7 +325,7 @@ class PmsConnect(object):
 
         Output: array
         """
-        request_handler = http_handler.HTTPHandler(urls=self.url, token=self.token, timeout=self.timeout)
+        request_handler = self.http_handler
         uri = '/sync/items/' + sync_id
         request = request_handler.make_request(uri=uri,
                                                request_type='GET',
@@ -341,7 +341,7 @@ class PmsConnect(object):
 
         Output: array
         """
-        request_handler = http_handler.HTTPHandler(urls=self.url, token=self.token, timeout=self.timeout)
+        request_handler = self.http_handler
         uri = '/sync/transcodeQueue'
         request = request_handler.make_request(uri=uri,
                                                request_type='GET',
@@ -357,7 +357,7 @@ class PmsConnect(object):
 
         Output: array
         """
-        request_handler = http_handler.HTTPHandler(urls=self.url, token=self.token, timeout=self.timeout)
+        request_handler = self.http_handler
         uri = '/hubs/search?query=' + urllib.parse.quote(query.encode('utf8')) + '&limit=' + limit + '&includeCollections=1'
         request = request_handler.make_request(uri=uri,
                                                request_type='GET',
@@ -373,7 +373,7 @@ class PmsConnect(object):
 
         Output: array
         """
-        request_handler = http_handler.HTTPHandler(urls=self.url, token=self.token, timeout=self.timeout)
+        request_handler = self.http_handler
         uri = '/myplex/account'
         request = request_handler.make_request(uri=uri,
                                                request_type='GET',
@@ -389,7 +389,7 @@ class PmsConnect(object):
 
         Output: None
         """
-        request_handler = http_handler.HTTPHandler(urls=self.url, token=self.token, timeout=self.timeout)
+        request_handler = self.http_handler
         uri = '/myplex/refreshReachability'
         request = request_handler.make_request(uri=uri,
                                                request_type='PUT',
@@ -405,7 +405,7 @@ class PmsConnect(object):
 
         Output: array
         """
-        request_handler = http_handler.HTTPHandler(urls=self.url, token=self.token, timeout=self.timeout)
+        request_handler = self.http_handler
         uri = '/updater/check?download=0'
         request = request_handler.make_request(uri=uri,
                                                request_type='PUT',
@@ -421,7 +421,7 @@ class PmsConnect(object):
 
         Output: array
         """
-        request_handler = http_handler.HTTPHandler(urls=self.url, token=self.token, timeout=self.timeout)
+        request_handler = self.http_handler
         uri = '/updater/status'
         request = request_handler.make_request(uri=uri,
                                                request_type='GET',
@@ -441,7 +441,7 @@ class PmsConnect(object):
         Output: array
         """
         personal = '&personal=1' if other_video else ''
-        request_handler = http_handler.HTTPHandler(urls=self.url, token=self.token, timeout=self.timeout)
+        request_handler = self.http_handler
         uri = '/hubs/home/recentlyAdded?X-Plex-Container-Start=%s&X-Plex-Container-Size=%s&type=%s%s' \
               % (start, count, media_type, personal)
         request = request_handler.make_request(uri=uri,
@@ -2701,7 +2701,7 @@ class PmsConnect(object):
             if blur:
                 params['blur'] = blur
 
-            request_handler = http_handler.HTTPHandler(urls=self.url, token=self.token, timeout=self.timeout)
+            request_handler = self.http_handler
             uri = '/photo/:/transcode?%s' % urllib.parse.urlencode(params)
             result = request_handler.make_request(uri=uri,
                                                   request_type='GET',
