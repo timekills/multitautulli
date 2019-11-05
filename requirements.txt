@@ -17,7 +17,7 @@ cherrypy==18.4.0
 click==7.0                # via pip-tools
 cloudinary==1.18.2
 configobj==5.0.6
-cryptography==2.8         # via jwt, pyopenssl
+cryptography==2.8         # via pyopenssl
 dnspython==1.16.0         # via ipwhois
 facebook-sdk==3.1.0
 feedparser==5.2.1
@@ -30,7 +30,6 @@ infi.systray==0.1.11
 ipwhois==1.1.0
 ipy==1.0
 jaraco.functools==2.0     # via cheroot, tempora
-jwt==0.6.1
 logutils==0.3.5
 mako==1.1.0
 markupsafe==1.1.1         # via mako
@@ -43,6 +42,7 @@ passlib==1.7.1
 pip-tools==4.2.0
 portend==2.6
 pycparser==2.19           # via cffi
+pyjwt==1.7.1
 pynma==1.0
 pyopenssl==19.0.0
 python-dateutil==2.8.1    # via arrow

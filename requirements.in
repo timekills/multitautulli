@@ -18,7 +18,7 @@ xmltodict
 websocket-client
 infi.systray
 geoip2
-jwt
+pyjwt
 logutils
 maxminddb
 cloudinary
