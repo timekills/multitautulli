@@ -66,7 +66,7 @@ def refresh_users():
                         shared_library_keys['server_id'] = server_id
                         if 'shared_libraries' in shared_library:
                             for k, v in enumerate(shared_library['shared_libraries']):
-                                shared_library['shared_libraries'][k] = str(libraries.get_section_index(server_id, v)).decode("utf-8")
+                                shared_library['shared_libraries'][k] = str(libraries.get_section_index(server_id, v))
                             shared_library['shared_libraries'] = ';'.join(shared_library['shared_libraries'])
                         elif 'server_token' in shared_library:
                             libs = libraries.Libraries().get_sections(server_id=server_id)
@@ -540,7 +540,7 @@ class Users(object):
         for item in result:
             # Rename Mystery platform names
             platform = common.PLATFORM_NAME_OVERRIDES.get(item['platform'], item['platform'])
-            platform_name = next((v for k, v in common.PLATFORM_NAMES.iteritems() if k in platform.lower()), 'default')
+            platform_name = next((v for k, v in common.PLATFORM_NAMES.items() if k in platform.lower()), 'default')
 
             row = {'player_name': item['player'],
                    'platform': platform,
@@ -812,7 +812,7 @@ class Users(object):
             result = {}
 
         filters_list = {}
-        for k, v in result.iteritems():
+        for k, v in result.items():
             filters = {}
                 
             for f in v.split('|'):

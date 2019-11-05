@@ -14,7 +14,6 @@
 #  along with Tautulli.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
-from Queue import Queue
 import sqlite3
 import sys
 import subprocess

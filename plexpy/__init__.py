@@ -14,7 +14,7 @@
 #  along with Tautulli.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
-from Queue import Queue
+from queue import Queue
 import sqlite3
 import sys
 import subprocess
@@ -22,7 +22,6 @@ import threading
 import datetime
 import uuid
 import json
-
 # Some cut down versions of Python may not include this module and it's not critical for us
 try:
     import webbrowser
@@ -33,7 +32,7 @@ except ImportError:
 import cherrypy
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
-from UniversalAnalytics import Tracker
+#from UniversalAnalytics import Tracker
 
 import activity_handler
 import activity_pinger
@@ -330,7 +329,7 @@ def daemonize():
     except OSError as e:
         raise RuntimeError("2nd fork failed: %s [%d]", e.strerror, e.errno)
 
-    dev_null = file('/dev/null', 'r')
+    dev_null = open('/dev/null', 'r')
     os.dup2(dev_null.fileno(), sys.stdin.fileno())
 
     si = open('/dev/null', "r")
@@ -346,7 +345,7 @@ def daemonize():
 
     if CREATEPID:
         logger.info(u"Writing PID %d to %s", pid, PIDFILE)
-        with file(PIDFILE, 'w') as fp:
+        with open(PIDFILE, 'w') as fp:
             fp.write("%s\n" % pid)
 
 
@@ -367,7 +366,7 @@ def launch_browser(host, port, root):
 
 
 def win_system_tray():
-    from systray import SysTrayIcon
+    from infi.systray import SysTrayIcon
 
     def tray_open(sysTrayIcon):
         launch_browser(plexpy.CONFIG.HTTP_HOST, plexpy.HTTP_PORT, plexpy.HTTP_ROOT)
@@ -395,16 +394,17 @@ def win_system_tray():
         icon = os.path.join(plexpy.PROG_DIR, 'data/interfaces/', plexpy.CONFIG.INTERFACE, 'images/logo_tray.ico')
         hover_text = common.PRODUCT
 
-    menu_options = (('Open Tautulli', None, tray_open, 'default'),
-                    ('', None, 'separator', None),
-                    ('Check for Updates', None, tray_check_update, None),
-                    ('Update', None, tray_update, None),
-                    ('Restart', None, tray_restart, None))
+    menu_options = (
+                    ('Open Tautulli', None, tray_open),
+                    ('Check for Updates', None, tray_check_update),
+                    ('Update', None, tray_update),
+                    ('Restart', None, tray_restart),
+    )
 
     logger.info(u"Launching system tray icon.")
 
     try:
-        plexpy.WIN_SYS_TRAY_ICON = SysTrayIcon(icon, hover_text, menu_options, on_quit=tray_quit)
+        plexpy.WIN_SYS_TRAY_ICON = SysTrayIcon(icon, hover_text, menu_options, on_quit=tray_quit, default_menu_index=1)
         plexpy.WIN_SYS_TRAY_ICON.start()
     except Exception as e:
         logger.error(u"Unable to launch system tray icon: %s." % e)
@@ -423,19 +423,19 @@ def initialize_scheduler():
     SCHED_LIST.append({'name': 'Check GitHub for updates',
                        'time': {'hours': 0, 'minutes': github_minutes, 'seconds': 0},
                        'func': versioncheck.check_update,
-                       'args': [(bool(CONFIG.PLEXPY_AUTO_UPDATE), True)],
+                       'args': [bool(CONFIG.PLEXPY_AUTO_UPDATE), True],
                        })
 
     SCHED_LIST.append({'name': 'Backup Tautulli Database',
                        'time': {'hours': backup_hours, 'minutes': 0, 'seconds': 0},
                        'func': database.make_backup,
-                       'args': [(True, True)],
+                       'args': [True, True],
                        })
 
     SCHED_LIST.append({'name': 'Backup Tautulli Config',
                        'time': {'hours': backup_hours, 'minutes': 0, 'seconds': 0},
                        'func': config.make_backup,
-                       'args': [(True, True)],
+                       'args': [True, True],
                        })
 
     schedule_joblist(lock=SCHED_LOCK, scheduler=SCHED, jobList=SCHED_LIST)
@@ -502,26 +502,26 @@ def start():
             PMS_SERVERS = plexServers()
             PMS_SERVERS.start()
 
+        # TODO: Handle this
         # Initialize System Analytics
-        if CONFIG.SYSTEM_ANALYTICS:
-            global TRACKER
-            TRACKER = initialize_tracker()
-
-            # Send system analytics events
-            if not CONFIG.FIRST_RUN_COMPLETE:
-                analytics_event(category='system', action='install')
-
-            elif _UPDATE:
-                analytics_event(category='system', action='update')
-
-            analytics_event(category='system', action='start')
-
-        # Schedule newsletters
-        newsletter_handler.NEWSLETTER_SCHED.start()
-        newsletter_handler.schedule_newsletters()
-
+        # if CONFIG.SYSTEM_ANALYTICS:
+        #     global TRACKER
+        #     TRACKER = initialize_tracker()
+        #
+        #     # Send system analytics events
+        #     if not CONFIG.FIRST_RUN_COMPLETE:
+        #         analytics_event(category='system', action='install')
+        #
+        #     elif _UPDATE:
+        #         analytics_event(category='system', action='update')
+        #
+        #     analytics_event(category='system', action='start')
+        #
+        # # Schedule newsletters
+        # newsletter_handler.NEWSLETTER_SCHED.start()
+        # newsletter_handler.schedule_newsletters()
+        #
         _STARTED = True
-
 
 def sig_handler(signum=None, frame=None):
     if signum is not None:
@@ -1859,9 +1859,17 @@ def dbcheck():
 
     # Create servers table and migrate library_sections and session_history_metadata
     try:
-        result = c_db.execute('SELECT SQL FROM sqlite_master WHERE type="table" AND name="library_sections"').fetchone()
-        if 'server_id TEXT' in result[0]:
+        result = c_db.execute('PRAGMA TABLE_INFO(library_sections)').fetchall()
+        doV3Migration = False
+        for row in result:
+            if row[1] == 'server_id':
+                if row[2] == 'TEXT':
+                    doV3Migration = True
+                break
+
+        if doV3Migration:
             logger.debug(u"Multi-Server Migration - Converting Database to Multi-Server Format.")
+            result = c_db.execute('SELECT SQL FROM sqlite_master WHERE type="table" AND name="library_sections"').fetchone()
             library_sections_temp = result[0].replace("server_id TEXT", "server_id INTEGER").replace("library_sections", "library_sections_temp")
 
             logger.debug(u"Multi-Server Migration - Inserting configured server into servers table.")

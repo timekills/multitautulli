@@ -18,13 +18,13 @@ import json
 import os
 import shutil
 import threading
-import urllib
+import urllib.parse
 
 import cherrypy
 from cherrypy.lib.static import serve_file, serve_download
 from cherrypy._cperror import NotFound
 
-from hashing_passwords import make_hash
+from passlib.hash import pbkdf2_sha256
 from mako.lookup import TemplateLookup
 from mako import exceptions
 
@@ -297,10 +297,10 @@ class WebInterface(object):
                 ep = ep.format(machine_id=server.CONFIG.PMS_IDENTIFIER)
             if (server_id and server_id.isdigit() and int(server_id) == server.CONFIG.ID) \
                     or (plextv == 'true' and '{machine_id}' not in endpoint):
-                xml_url.append(base_url + ep + '?' + urllib.urlencode(kwargs))
+                xml_url.append(base_url + ep + '?' + urllib.parse.urlencode(kwargs))
                 break
             elif not server_id or server_id == 'false':
-                xml_url.append(base_url + ep + '?' + urllib.urlencode(kwargs))
+                xml_url.append(base_url + ep + '?' + urllib.parse.urlencode(kwargs))
 
         return xml_url
 
@@ -2415,13 +2415,13 @@ class WebInterface(object):
                 try:
                     temp_loglevel_and_time = l.split(' - ', 1)
                     loglvl = temp_loglevel_and_time[1].split(' ::', 1)[0].strip()
-                    msg = helpers.sanitize(unicode(l.split(' : ', 1)[1].replace('\n', ''), 'utf-8'))
+                    msg = helpers.sanitize(str(l.split(' : ', 1)[1].replace('\n', '')))
                     fa([temp_loglevel_and_time[0], loglvl, msg])
                 except IndexError:
                     # Add traceback message to previous msg.
                     tl = (len(filt) - 1)
                     n = len(l) - len(l.lstrip(' '))
-                    ll = '&nbsp;' * (2 * n) + helpers.sanitize(unicode(l[n:], 'utf-8'))
+                    ll = '&nbsp;' * (2 * n) + helpers.sanitize(str(l[n:]))
                     filt[tl][2] += '<br>' + ll
                     continue
 
@@ -2889,13 +2889,13 @@ class WebInterface(object):
         if kwargs.get('http_password'):
             if kwargs['http_password'] == '    ' and plexpy.CONFIG.HTTP_PASSWORD != '':
                 if kwargs.get('http_hash_password') and not plexpy.CONFIG.HTTP_HASHED_PASSWORD:
-                    kwargs['http_password'] = make_hash(plexpy.CONFIG.HTTP_PASSWORD)
+                    kwargs['http_password'] = pbkdf2_sha256.hash(plexpy.CONFIG.HTTP_PASSWORD)
                     kwargs['http_hashed_password'] = 1
                 else:
                     kwargs['http_password'] = plexpy.CONFIG.HTTP_PASSWORD
 
             elif kwargs['http_password'] and kwargs.get('http_hash_password'):
-                kwargs['http_password'] = make_hash(kwargs['http_password'])
+                kwargs['http_password'] = pbkdf2_sha256.hash(kwargs['http_password'])
                 kwargs['http_hashed_password'] = 1
 
             elif not kwargs.get('http_hash_password'):
@@ -2930,7 +2930,7 @@ class WebInterface(object):
             reschedule_plexServers = True
 
         # If we change any plexServer monitoring settings, make sure we reschedule tasks.
-        if kwargs.get('monitor_rclone') != str(plexpy.CONFIG.MONITOR_RCLONE):
+        if kwargs.get('monitor_rclone') != plexpy.CONFIG.MONITOR_RCLONE:
             reschedule_plexServer = True
 
         # If we change the HTTPS setting, make sure we generate a new certificate.
@@ -2943,21 +2943,21 @@ class WebInterface(object):
 
         # Remove config with 'hsec-' prefix and change home_sections to list
         if kwargs.get('home_sections'):
-            for k in kwargs.keys():
+            for k in list(kwargs.keys()):
                 if k.startswith('hsec-'):
                     del kwargs[k]
             kwargs['home_sections'] = kwargs['home_sections'].split(',')
 
         # Remove config with 'hscard-' prefix and change home_stats_cards to list
         if kwargs.get('home_stats_cards'):
-            for k in kwargs.keys():
+            for k in list(kwargs.keys()):
                 if k.startswith('hscard-'):
                     del kwargs[k]
             kwargs['home_stats_cards'] = kwargs['home_stats_cards'].split(',')
 
         # Remove config with 'hlcard-' prefix and change home_library_cards to list
         if kwargs.get('home_library_cards'):
-            for k in kwargs.keys():
+            for k in list(kwargs.keys()):
                 if k.startswith('hlcard-'):
                     del kwargs[k]
             kwargs['home_library_cards'] = kwargs['home_library_cards'].split(',')
@@ -3034,9 +3034,9 @@ class WebInterface(object):
     def get_servers_list(self, **kwargs):
         # Build Server List Configuration Settings
         server_list = []
-        for server in plexpy.PMS_SERVERS:
+        for server in sorted(plexpy.PMS_SERVERS, key=lambda server: server.CONFIG.PMS_NAME):
             server_list.append(server.get_config())
-        return sorted(server_list)
+        return server_list
 
     @cherrypy.expose
     @cherrypy.tools.json_out()
@@ -3076,6 +3076,22 @@ class WebInterface(object):
         reschedule = False
         restart = False
 
+        checked_configs = [
+            "monitor_rclone_mount",
+            "rclone_ssl",
+            "monitor_pms_updates",
+            "monitor_remote_access",
+            "pms_ssl",
+            "pms_url_manual",
+            "refresh_libraries_on_startup",
+        ]
+        for checked_config in checked_configs:
+            if checked_config not in kwargs:
+                # checked items should be zero or one. if they were not sent then the item was not checked
+                kwargs[checked_config] = 0
+            else:
+                kwargs[checked_config] = int(kwargs[checked_config])
+
         kwargs_to_ignore = ['pms_ip',
                             'pms_port',
                             'pms_is_remote',
@@ -3091,7 +3107,7 @@ class WebInterface(object):
             kwargs.pop(kw, None)
 
         url = kwargs.pop('url', None)
-        if bool(int(kwargs['pms_url_manual'])):
+        if kwargs.get('pms_url_manual'):
             kwargs['pms_url_override'] = url
 
         if kwargs.pop('server_changed', None):
@@ -3104,14 +3120,14 @@ class WebInterface(object):
 
             # If we change any monitoring settings, make sure we reschedule tasks.
             if kwargs.get('refresh_libraries_interval') != str(server.CONFIG.REFRESH_LIBRARIES_INTERVAL) or \
-               kwargs.get('monitor_pms_updates') != str(server.CONFIG.MONITOR_PMS_UPDATES) or \
-               kwargs.get('monitor_remote_access') != str(server.CONFIG.MONITOR_REMOTE_ACCESS) or \
-               kwargs.get('monitor_rclone_mount') != str(server.CONFIG.MONITOR_RCLONE_MOUNT):
+               kwargs.get('monitor_pms_updates') != server.CONFIG.MONITOR_PMS_UPDATES or \
+               kwargs.get('monitor_remote_access') != server.CONFIG.MONITOR_REMOTE_ACCESS or \
+               kwargs.get('monitor_rclone_mount') != server.CONFIG.MONITOR_RCLONE_MOUNT:
                 reschedule = True
 
             # If we change the SSL setting for PMS or PMS remote setting,server monitoring needs to be restarted.
-            if kwargs.get('pms_ssl') != str(server.CONFIG.PMS_SSL) or \
-               kwargs.get('pms_url_manual') != str(server.CONFIG.PMS_URL_MANUAL):
+            if kwargs.get('pms_ssl') != server.CONFIG.PMS_SSL or \
+               kwargs.get('pms_url_manual') != server.CONFIG.PMS_URL_MANUAL:
                 restart = True
                 reschedule = True
 
@@ -5492,7 +5508,7 @@ class WebInterface(object):
             ```
         """
         geo_info = helpers.geoip_lookup(ip_address)
-        if isinstance(geo_info, basestring):
+        if isinstance(geo_info, str):
             return {'error': geo_info}
         return geo_info
 

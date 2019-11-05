@@ -1,5 +1,14 @@
 # Changelog
 
+## v4.0.00 (2019-11-01)
+* (NEW) Python 3 migration
+* (NEW) Remove site packages from lib
+* (NEW) Upgrade all site packages to current releases
+* (NEW) Implement the use of python VENV
+* (NEW) Implement the use of pip-tools for maintaining site packages used by Tautulli
+* (FIXED) Occasional failures to process XML responses.
+* (FIXED) Media filtering in History display.
+
 ## v3.0.00-beta (2019-01-22)
 
 * Monitoring:

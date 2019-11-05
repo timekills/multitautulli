@@ -24,7 +24,7 @@ import helpers
 import libraries
 import logger
 import notification_handler
-from .config import bool_int
+from config import bool_int
 
 
 def check_active_sessions(server=None, ws_request=False):

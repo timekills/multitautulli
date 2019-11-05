@@ -24,7 +24,7 @@ import geoip2.database, geoip2.errors
 import gzip
 import hashlib
 import imghdr
-from itertools import izip_longest
+from itertools import zip_longest
 import ipwhois, ipwhois.exceptions, ipwhois.utils
 from IPy import IP
 import json
@@ -38,7 +38,8 @@ import socket
 import sys
 import time
 import unicodedata
-import urllib, urllib2
+import urllib.parse
+import urllib.request
 from xml.dom import minidom
 import xmltodict
 
@@ -81,6 +82,17 @@ def addtoapi(*dargs, **dkwargs):
 
     return rd
 
+def cmp(x, y):
+    """
+    Replacement for built-in function cmp that was removed in Python 3
+
+    Compare the two objects x and y and return an integer according to
+    the outcome. The return value is negative if x < y, zero if x == y
+    and strictly positive if x > y.
+    """
+
+    return (x > y) - (x < y)
+
 
 def multikeysort(items, columns):
     comparers = [((itemgetter(col[1:].strip()), -1) if col.startswith('-') else (itemgetter(col.strip()), 1)) for col in columns]
@@ -93,7 +105,7 @@ def multikeysort(items, columns):
         else:
             return 0
 
-    return sorted(items, cmp=comparer)
+    return sorted(items, key=comparer)
 
 
 def checked(variable):
@@ -310,7 +322,7 @@ def replace_all(text, dic, normalize=False):
     if not text:
         return ''
 
-    for i, j in dic.iteritems():
+    for i, j in dic.items():
         if normalize:
             try:
                 if sys.platform == 'darwin':
@@ -524,7 +536,7 @@ def process_json_kwargs(json_kwargs):
 
 def sanitize(string):
     if string:
-        return unicode(string).replace('<','&lt;').replace('>','&gt;')
+        return str(string).replace('<','&lt;').replace('>','&gt;')
     else:
         return ''
 
@@ -571,9 +583,9 @@ def install_geoip_db():
     # Retrieve the GeoLite2 gzip file
     logger.debug(u"Tautulli Helpers :: Downloading GeoLite2 gzip file from MaxMind...")
     try:
-        maxmind = urllib.URLopener()
+        maxmind = urllib.request.URLopener()
         maxmind.retrieve(maxmind_url + geolite2_gz, temp_gz)
-        md5_checksum = urllib2.urlopen(maxmind_url + geolite2_md5).read()
+        md5_checksum = urllib.request.urlopen(maxmind_url + geolite2_md5).read()
     except Exception as e:
         logger.error(u"Tautulli Helpers :: Failed to download GeoLite2 gzip file from MaxMind: %s" % e)
         return False
@@ -1120,7 +1132,7 @@ def grouper(iterable, n, fillvalue=None):
     "Collect data into fixed-length chunks or blocks"
     # grouper('ABCDEFG', 3, 'x') --> ABC DEF Gxx
     args = [iter(iterable)] * n
-    return izip_longest(fillvalue=fillvalue, *args)
+    return zip_longest(fillvalue=fillvalue, *args)
 
 
 def traverse_map(obj, func):
@@ -1131,7 +1143,7 @@ def traverse_map(obj, func):
 
     elif isinstance(obj, dict):
         new_obj = {}
-        for k, v in obj.iteritems():
+        for k, v in obj.items():
             new_obj[traverse_map(k, func)] = traverse_map(v, func)
 
     else:
@@ -1143,7 +1155,7 @@ def traverse_map(obj, func):
 def split_args(args=None):
     if isinstance(args, list):
         return args
-    elif isinstance(args, basestring):
+    elif isinstance(args, str):
         return [arg.decode(plexpy.SYS_ENCODING, 'ignore')
-                for arg in shlex.split(args.encode(plexpy.SYS_ENCODING, 'ignore'))]
+                for arg in shlex.split(args)]
     return []

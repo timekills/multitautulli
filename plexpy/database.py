@@ -189,16 +189,16 @@ class MonitorDatabase(object):
         update_query = "UPDATE " + table_name + " SET " + ", ".join(gen_params(value_dict)) + \
                        " WHERE " + " AND ".join(gen_params(key_dict))
 
-        self.action(update_query, value_dict.values() + key_dict.values())
+        self.action(update_query, list(value_dict.values()) + list(key_dict.values()))
 
         if self.connection.total_changes == changes_before:
             trans_type = 'insert'
             insert_query = (
-                "INSERT INTO " + table_name + " (" + ", ".join(value_dict.keys() + key_dict.keys()) + ")" +
-                " VALUES (" + ", ".join(["?"] * len(value_dict.keys() + key_dict.keys())) + ")"
+                "INSERT INTO " + table_name + " (" + ", ".join(list(value_dict.keys()) + list(key_dict.keys())) + ")" +
+                " VALUES (" + ", ".join(["?"] * len(list(value_dict.keys()) + list(key_dict.keys()))) + ")"
             )
             try:
-                self.action(insert_query, value_dict.values() + key_dict.values())
+                self.action(insert_query, list(value_dict.values()) + list(key_dict.values()))
             except sqlite3.IntegrityError:
                 logger.info(u"Tautulli Database :: Queries failed: %s and %s", update_query, insert_query)
                 logger.debug(u"Tautulli Database :: Keys:   %s", json.dumps(key_dict))

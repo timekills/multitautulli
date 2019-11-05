@@ -243,13 +243,13 @@ def notify_custom_conditions(notifier_id=None, parameters=None):
                 continue
 
             # Make sure the condition values is in a list
-            if isinstance(values, basestring):
+            if isinstance(values, str):
                 values = [values]
 
             # Cast the condition values to the correct type
             try:
                 if parameter_type == 'str':
-                    values = [unicode(v).lower() for v in values]
+                    values = [str(v).lower() for v in values]
 
                 elif parameter_type == 'int':
                     values = [helpers.cast_to_int(v) for v in values]
@@ -265,7 +265,7 @@ def notify_custom_conditions(notifier_id=None, parameters=None):
             # Cast the parameter value to the correct type
             try:
                 if parameter_type == 'str':
-                    parameter_value = unicode(parameter_value).lower()
+                    parameter_value = str(parameter_value).lower()
 
                 elif parameter_type == 'int':
                     parameter_value = helpers.cast_to_int(parameter_value)
@@ -1027,10 +1027,10 @@ def build_notify_text(subject='', body='', notify_action=None, parameters=None, 
         default_body = default_action.get('body', '')
 
     # Make sure subject and body text are strings
-    if not isinstance(subject, basestring):
+    if not isinstance(subject, str):
         logger.error(u"Tautulli NotificationHandler :: Invalid subject text. Using fallback.")
         subject = default_subject
-    if not isinstance(body, basestring):
+    if not isinstance(body, str):
         logger.error(u"Tautulli NotificationHandler :: Invalid body text. Using fallback.")
         body = default_body
 
@@ -1079,13 +1079,13 @@ def build_notify_text(subject='', body='', notify_action=None, parameters=None, 
             script_args = []
 
     try:
-        subject = custom_formatter.format(unicode(subject), **parameters)
+        subject = custom_formatter.format(str(subject), **parameters)
     except LookupError as e:
         logger.error(u"Tautulli NotificationHandler :: Unable to parse parameter %s in notification subject. Using fallback." % e)
-        subject = unicode(default_subject).format(**parameters)
+        subject = str(default_subject).format(**parameters)
     except Exception as e:
         logger.error(u"Tautulli NotificationHandler :: Unable to parse custom notification subject: %s. Using fallback." % e)
-        subject = unicode(default_subject).format(**parameters)
+        subject = str(default_subject).format(**parameters)
 
     if agent_id == 25:
         if body:
@@ -1097,8 +1097,8 @@ def build_notify_text(subject='', body='', notify_action=None, parameters=None, 
 
         if body:
             def str_format(s):
-                if isinstance(s, basestring):
-                    return custom_formatter.format(unicode(s), **parameters)
+                if isinstance(s, str):
+                    return custom_formatter.format(str(s), **parameters)
                 return s
 
             try:
@@ -1112,13 +1112,13 @@ def build_notify_text(subject='', body='', notify_action=None, parameters=None, 
 
     else:
         try:
-            body = custom_formatter.format(unicode(body), **parameters)
+            body = custom_formatter.format(str(body), **parameters)
         except LookupError as e:
             logger.error(u"Tautulli NotificationHandler :: Unable to parse parameter %s in notification body. Using fallback." % e)
-            body = unicode(default_body).format(**parameters)
+            body = str(default_body).format(**parameters)
         except Exception as e:
             logger.error(u"Tautulli NotificationHandler :: Unable to parse custom notification body: %s. Using fallback." % e)
-            body = unicode(default_body).format(**parameters)
+            body = str(default_body).format(**parameters)
 
     return subject, body, script_args
 
@@ -1158,7 +1158,7 @@ def format_group_index(group_keys):
     num = []
     num00 = []
 
-    for k, g in groupby(enumerate(group_keys), lambda (i, x): i-x):
+    for k, g in groupby(enumerate(group_keys), lambda i_x: i_x[0] - i_x[1]):
         group = map(itemgetter(1), g)
         g_min, g_max = min(group), max(group)
 
@@ -1294,7 +1294,7 @@ def set_hash_image_info(img=None, server_id=None, rating_key=None, width=750, he
 
     img_string = '{}.{}.{}.{}.{}.{}.{}.{}.{}.{}'.format(
         plexpy.CONFIG.PMS_UUID, img, server_id, rating_key, width, height, opacity, background, blur, fallback)
-    img_hash = hashlib.sha256(img_string).hexdigest()
+    img_hash = hashlib.sha256(str(img_string).encode('utf-8')).hexdigest()
 
     if add_to_db:
         keys = {'img_hash': img_hash}
@@ -1499,11 +1499,11 @@ class CustomFormatter(Formatter):
         elif conversion == 'r':
             return repr(value)
         elif conversion == 'u':  # uppercase
-            return unicode(value).upper()
+            return str(value).upper()
         elif conversion == 'l':  # lowercase
-            return unicode(value).lower()
+            return str(value).lower()
         elif conversion == 'c':  # capitalize
-            return unicode(value).title()
+            return str(value).title()
         else:
             return value
 
@@ -1511,7 +1511,7 @@ class CustomFormatter(Formatter):
         if format_spec.startswith('[') and format_spec.endswith(']'):
             pattern = re.compile(r'\[(-?\d*):?(-?\d*)\]')
             if re.match(pattern, format_spec):  # slice
-                items = [x.strip() for x in unicode(value).split(',')]
+                items = [x.strip() for x in str(value).split(',')]
                 slice_start, slice_end = re.search(pattern, format_spec).groups()
                 slice_start = helpers.cast_to_int(slice_start) or None
                 slice_end = helpers.cast_to_int(slice_end) or None
@@ -1525,7 +1525,7 @@ class CustomFormatter(Formatter):
                 return self.default_format_spec.format(value[1:-1], format_spec)
 
     def get_value(self, key, args, kwargs):
-        if isinstance(key, basestring):
+        if isinstance(key, str):
             return kwargs.get(key, self.default.format(key))
         else:
             return super(CustomFormatter, self).get_value(key, args, kwargs)

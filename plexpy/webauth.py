@@ -19,10 +19,10 @@
 # Session tool to be loaded.
 
 from datetime import datetime, timedelta
-from urllib import quote, unquote
+from urllib.parse import quote, unquote
 
 import cherrypy
-from hashing_passwords import check_hash
+from passlib.hash import pbkdf2_sha256
 import jwt
 import threading
 
@@ -135,7 +135,7 @@ def check_credentials(username=None, password=None, token=None, admin_login='0',
             user_details = {'user_id': None, 'username': username, 'access_level': 9}
 
             if plexpy.CONFIG.HTTP_HASHED_PASSWORD and \
-                    username == plexpy.CONFIG.HTTP_USERNAME and check_hash(password, plexpy.CONFIG.HTTP_PASSWORD):
+                    username == plexpy.CONFIG.HTTP_USERNAME and pbkdf2_sha256.verify(password, plexpy.CONFIG.HTTP_PASSWORD):
                 return True, user_details, 'admin'
             elif not plexpy.CONFIG.HTTP_HASHED_PASSWORD and \
                     username == plexpy.CONFIG.HTTP_USERNAME and password == plexpy.CONFIG.HTTP_PASSWORD:

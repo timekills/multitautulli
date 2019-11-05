@@ -5,7 +5,7 @@ Locking-related classes
 import plexpy.logger
 import time
 import threading
-import Queue
+from queue import Queue
 
 
 class TimedLock(object):
@@ -28,7 +28,7 @@ class TimedLock(object):
         self.lock = threading.Lock()
         self.last_used = 0
         self.minimum_delta = minimum_delta
-        self.queue = Queue.Queue()
+        self.queue = Queue()
 
     def __enter__(self):
         """

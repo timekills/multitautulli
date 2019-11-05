@@ -18,12 +18,12 @@
 #########################################
 
 
-import urllib
+import urllib.request
 
 from common import USER_AGENT
 
 
-class PlexPyURLopener(urllib.FancyURLopener):
+class PlexPyURLopener(urllib.request.FancyURLopener):
     version = USER_AGENT
 
 
@@ -44,7 +44,7 @@ class AuthURLOpener(PlexPyURLopener):
         self.numTries = 0
 
         # call the base class
-        urllib.FancyURLopener.__init__(self)
+        urllib.request.FancyURLopener.__init__(self)
 
     def prompt_user_passwd(self, host, realm):
         """

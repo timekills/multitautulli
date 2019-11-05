@@ -28,8 +28,7 @@ import subprocess
 import sys
 import threading
 import time
-from urllib import urlencode
-from urlparse import urlparse
+from urllib.parse import urlencode, urlparse
 import uuid
 
 try:
@@ -454,7 +453,7 @@ def get_notifiers(notifier_id=None, notify_action=None):
                        % (', '.join(notify_actions), where), args=args)
 
     for item in result:
-        item['active'] = int(any([item.pop(k) for k in item.keys() if k in notify_actions]))
+        item['active'] = int(any([item.pop(k) for k in list(item) if k in notify_actions]))
 
     return result
 
@@ -497,7 +496,7 @@ def get_notifier_config(notifier_id=None):
 
     notifier_actions = {}
     notifier_text = {}
-    for k in result.keys():
+    for k in list(result.keys()):
         if k in notify_actions:
             subject = result.pop(k + '_subject')
             body = result.pop(k + '_body')
@@ -595,13 +594,13 @@ def set_notifier_config(notifier_id=None, agent_id=None, **kwargs):
     config_prefix = agent['name'] + '_'
 
     actions = {k: helpers.cast_to_int(kwargs.pop(k))
-               for k in kwargs.keys() if k in notify_actions}
+               for k in list(kwargs.keys()) if k in notify_actions}
     subject_text = {k: kwargs.pop(k)
-                    for k in kwargs.keys() if k.startswith(notify_actions) and k.endswith('_subject')}
+                    for k in list(kwargs.keys()) if k.startswith(notify_actions) and k.endswith('_subject')}
     body_text = {k: kwargs.pop(k)
-                 for k in kwargs.keys() if k.startswith(notify_actions) and k.endswith('_body')}
+                 for k in list(kwargs.keys()) if k.startswith(notify_actions) and k.endswith('_body')}
     notifier_config = {k[len(config_prefix):]: kwargs.pop(k)
-                       for k in kwargs.keys() if k.startswith(config_prefix)}
+                       for k in list(kwargs.keys()) if k.startswith(config_prefix)}
 
     agent_class = get_agent_class(agent_id=agent['id'], config=notifier_config)
 
@@ -797,7 +796,7 @@ class Notifier(object):
             return default
 
         new_config = {}
-        for k, v in default.iteritems():
+        for k, v in default.items():
             if isinstance(v, int):
                 new_config[k] = helpers.cast_to_int(config.get(k, v))
             elif isinstance(v, list):
@@ -1398,9 +1397,9 @@ class EMAIL(Notifier):
         user_emails_cc.update(emails)
         user_emails_bcc.update(emails)
 
-        user_emails_to = [{'value': k, 'text': v} for k, v in user_emails_to.iteritems()]
-        user_emails_cc = [{'value': k, 'text': v} for k, v in user_emails_cc.iteritems()]
-        user_emails_bcc = [{'value': k, 'text': v} for k, v in user_emails_bcc.iteritems()]
+        user_emails_to = [{'value': k, 'text': v} for k, v in user_emails_to.items()]
+        user_emails_cc = [{'value': k, 'text': v} for k, v in user_emails_cc.items()]
+        user_emails_bcc = [{'value': k, 'text': v} for k, v in user_emails_bcc.items()]
 
         return user_emails_to, user_emails_cc, user_emails_bcc
 
@@ -2013,7 +2012,7 @@ class IFTTT(Notifier):
                        }
 
     def agent_notify(self, subject='', body='', action='', **kwargs):
-        event = unicode(self.config['event']).format(action=action)
+        event = str(self.config['event']).format(action=action)
 
         data = {'value1': subject.encode("utf-8"),
                 'value2': body.encode("utf-8")}
@@ -3059,11 +3058,12 @@ class SCRIPTS(Notifier):
             env['PYTHONPATH'] = os.pathsep.join([p for p in sys.path if p])
 
         try:
+            x = self.config['script_folder'].encode('utf-8')
             process = subprocess.Popen(script,
                                        stdin=subprocess.PIPE,
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE,
-                                       cwd=self.config['script_folder'],
+                                       cwd=self.config['script_folder'].encode('utf-8'),
                                        env=env)
 
             if self.config['timeout'] > 0:
@@ -3140,7 +3140,7 @@ class SCRIPTS(Notifier):
             script = [script]
 
         # For manual notifications
-        # if script_args and isinstance(script_args, basestring):
+        # if script_args and isinstance(script_args, str):
         #     # attempts to format it for the user
         #     script_args = [arg for arg in shlex.split(script_args.encode(plexpy.SYS_ENCODING, 'ignore'))]
 
@@ -3921,7 +3921,7 @@ def upgrade_config_to_db():
 
             # Update the new config with the old config values
             notifier_config = {}
-            for conf, val in notifier_default_config.iteritems():
+            for conf, val in notifier_default_config.items():
                 c_key = agent_config_key + '_' + config_key_overrides.get(agent, {}).get(conf, conf)
                 notifier_config[agent + '_' + conf] = agent_config.get(c_key, val)
 

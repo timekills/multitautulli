@@ -18,6 +18,7 @@ import sys
 
 import plexpy
 import cherrypy
+import portend
 import logger
 import webauth
 from plexpy.helpers import create_https_certificates
@@ -204,7 +205,7 @@ def initialize(options):
     }
 
     # Prevent time-outs
-    cherrypy.engine.timeout_monitor.unsubscribe()
+    #cherrypy.engine.timeout_monitor.unsubscribe()
     cherrypy.tree.mount(WebInterface(), options['http_root'], config=conf)
     if plexpy.HTTP_ROOT != '/':
         cherrypy.tree.mount(BaseRedirect(), '/')
@@ -212,7 +213,7 @@ def initialize(options):
     try:
         logger.info(u"Tautulli WebStart :: Starting Tautulli web server on %s://%s:%d%s", protocol,
                     options['http_host'], options['http_port'], options['http_root'])
-        cherrypy.process.servers.check_port(str(options['http_host']), options['http_port'])
+        portend.free(str(options['http_host']), options['http_port'])
         if not plexpy.DEV:
             cherrypy.server.start()
         else:

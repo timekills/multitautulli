@@ -222,7 +222,7 @@ def update_labels():
                                     % section_id)
 
     error_keys = set()
-    for rating_key, labels in key_mappings.iteritems():
+    for rating_key, labels in key_mappings.items():
         try:
             labels = ';'.join(labels)
             monitor_db.action('UPDATE session_history_metadata SET labels = ? '
@@ -577,7 +577,7 @@ class Libraries(object):
         if search_value:
             searchable_columns = [d['data'] for d in json_data['columns'] if d['searchable']]
             for row in rows:
-                for k,v in row.iteritems():
+                for k,v in row.items():
                     if k in searchable_columns and search_value in v.lower():
                         results.append(row)
                         break

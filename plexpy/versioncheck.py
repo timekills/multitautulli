@@ -14,6 +14,7 @@
 #  along with Tautulli.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
+import sys
 import platform
 import re
 import subprocess
@@ -46,15 +47,15 @@ def runGit(args):
             output, err = p.communicate()
             output = output.strip()
 
-            logger.debug('Git output: ' + output)
+            logger.debug('Git output: ' + str(output))
         except OSError:
             logger.debug('Command failed: %s', cmd)
             continue
 
-        if 'not found' in output or "not recognized as an internal or external command" in output:
+        if b'not found' in output or b"not recognized as an internal or external command" in output:
             logger.debug('Unable to find git with command ' + cmd)
             output = None
-        elif 'fatal:' in output or err:
+        elif b'fatal:' in output or err:
             logger.error('Git returned bad info. Are you sure this is a git installation?')
             output = None
         elif output:
@@ -316,6 +317,10 @@ def update():
             )
             return
 
+        output, err = pip_sync()
+        logger.info("Update Complete")
+        return True
+
 
 def checkout_git_branch():
     if plexpy.INSTALL_TYPE == 'git':
@@ -332,6 +337,7 @@ def checkout_git_branch():
                 logger.info('Output: ' + str(output))
 
         output, err = runGit('pull %s %s' % (plexpy.CONFIG.GIT_REMOTE, plexpy.CONFIG.GIT_BRANCH))
+        output, err = pip_sync()
 
 
 def read_changelog(latest_only=False, since_prev_release=False):
@@ -376,16 +382,16 @@ def read_changelog(latest_only=False, since_prev_release=False):
                     line_text = line_list_match.group(2)
 
                     if line_level > prev_level:
-                        output[-1] += '<ul>' * (line_level - prev_level) + '<li>' + line_text + '</li>'
+                        output[-1] += '<ul>' * int((line_level - prev_level)) + '<li>' + line_text + '</li>'
                     elif line_level < prev_level:
-                        output[-1] += '</ul>' * (prev_level - line_level) + '<li>' + line_text + '</li>'
+                        output[-1] += '</ul>' * int((prev_level - line_level)) + '<li>' + line_text + '</li>'
                     else:
                         output[-1] += '<li>' + line_text + '</li>'
 
                     prev_level = line_level
 
                 elif line.strip() == '' and prev_level:
-                    output[-1] += '</ul>' * (prev_level)
+                    output[-1] += '</ul>' * int(prev_level)
                     output.append('')
                     prev_level = 0
 
@@ -397,3 +403,22 @@ def read_changelog(latest_only=False, since_prev_release=False):
     except IOError as e:
         logger.error('Tautulli Version Checker :: Unable to open changelog file. %s' % e)
         return '<h4>Unable to open changelog file</h4>'
+
+
+def pip_sync():
+    logger.info("Running pip-sync to synchronize the environment.")
+    cmd = sys.executable + ' -m piptools sync requirements.txt'
+    try:
+        logger.debug('Trying to execute: "' + cmd + '" with shell in ' + plexpy.PROG_DIR)
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True,
+                             cwd=plexpy.PROG_DIR)
+        output, err = p.communicate()
+        for line in output.decode('utf-8').split('\n'):
+            if line:
+                logger.info('pip-sync output: ' + str(line))
+
+    except Exception as e:
+        logger.error('Command failed: %s' % e)
+        return None, None
+
+    return (output, err)

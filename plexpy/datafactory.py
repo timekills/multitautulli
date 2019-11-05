@@ -662,7 +662,7 @@ class DataFactory(object):
                 for item in result:
                     # Rename Mystery platform names
                     platform = common.PLATFORM_NAME_OVERRIDES.get(item['platform'], item['platform'])
-                    platform_name = next((v for k, v in common.PLATFORM_NAMES.iteritems() if k in platform.lower()), 'default')
+                    platform_name = next((v for k, v in common.PLATFORM_NAMES.items() if k in platform.lower()), 'default')
 
                     row = {'total_plays': item['total_plays'],
                            'total_duration': item['total_duration'],
@@ -1013,7 +1013,7 @@ class DataFactory(object):
                              'pre_tautulli': pre_tautulli
                              }
 
-        stream_output = {k: v or '' for k, v in stream_output.iteritems()}
+        stream_output = {k: v or '' for k, v in stream_output.items()}
         return stream_output
 
     def get_metadata_details(self, id):
@@ -1124,7 +1124,7 @@ class DataFactory(object):
             for w in custom_where:
                 if isinstance(w[1], tuple):
                     w[1] = ', '.join(w[1])
-            where = 'WHERE ' + ' AND '.join([w[0] + ' IN (' + w[1] + ')' for w in custom_where])
+            where = "WHERE " + " AND ".join([w[0] + " IN ('" + w[1] + "')" for w in custom_where])
         else:
             where = ''
 
@@ -1557,7 +1557,7 @@ class DataFactory(object):
         # function to map rating keys pairs
         def get_pairs(old, new):
             pairs = {}
-            for k, v in old.iteritems():
+            for k, v in old.items():
                 if k in new:
                     pairs.update({v['rating_key']: new[k]['rating_key']})
                     if 'children' in old[k]:
@@ -1572,7 +1572,7 @@ class DataFactory(object):
 
         if mapping:
             logger.info(u"Tautulli DataFactory :: Updating metadata in the database.")
-            for old_key, new_key in mapping.iteritems():
+            for old_key, new_key in mapping.items():
                 metadata = server.PMSCONNECTION.get_metadata_details(new_key)
 
                 if metadata:
