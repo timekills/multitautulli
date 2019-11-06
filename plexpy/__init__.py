@@ -2282,45 +2282,45 @@ def shutdown(restart=False, update=False, checkout=False):
 def generate_uuid():
     return uuid.uuid4().hex
 
-
-def initialize_tracker():
-    data = {
-        'dataSource': 'server',
-        'appName': common.PRODUCT,
-        'appVersion': common.RELEASE,
-        'appId': plexpy.INSTALL_TYPE,
-        'appInstallerId': plexpy.CONFIG.GIT_BRANCH,
-        'dimension1': '{} {}'.format(common.PLATFORM, common.PLATFORM_RELEASE),  # App Platform
-        'dimension2': common.PLATFORM_LINUX_DISTRO,  # Linux Distro
-        'userLanguage': plexpy.SYS_LANGUAGE,
-        'documentEncoding': plexpy.SYS_ENCODING,
-        'noninteractive': True
-        }
-
-    tracker = Tracker.create('UA-111522699-2', client_id=CONFIG.PMS_UUID, hash_client_id=True,
-                             user_agent=common.USER_AGENT)
-    tracker.set(data)
-
-    return tracker
-
-
-def analytics_event(category, action, label=None, value=None, **kwargs):
-    data = {'category': category, 'action': action}
-
-    if label is not None:
-        data['label'] = label
-
-    if value is not None:
-        data['value'] = value
-
-    if kwargs:
-        data.update(kwargs)
-
-    if TRACKER:
-        try:
-            TRACKER.send('event', data)
-        except Exception as e:
-            logger.warn(u"Failed to send analytics event for category '%s', action '%s': %s" % (category, action, e))
+#
+# def initialize_tracker():
+#     data = {
+#         'dataSource': 'server',
+#         'appName': common.PRODUCT,
+#         'appVersion': common.RELEASE,
+#         'appId': plexpy.INSTALL_TYPE,
+#         'appInstallerId': plexpy.CONFIG.GIT_BRANCH,
+#         'dimension1': '{} {}'.format(common.PLATFORM, common.PLATFORM_RELEASE),  # App Platform
+#         'dimension2': common.PLATFORM_LINUX_DISTRO,  # Linux Distro
+#         'userLanguage': plexpy.SYS_LANGUAGE,
+#         'documentEncoding': plexpy.SYS_ENCODING,
+#         'noninteractive': True
+#         }
+#
+#     tracker = Tracker.create('UA-111522699-2', client_id=CONFIG.PMS_UUID, hash_client_id=True,
+#                              user_agent=common.USER_AGENT)
+#     tracker.set(data)
+#
+#     return tracker
+#
+#
+# def analytics_event(category, action, label=None, value=None, **kwargs):
+#     data = {'category': category, 'action': action}
+#
+#     if label is not None:
+#         data['label'] = label
+#
+#     if value is not None:
+#         data['value'] = value
+#
+#     if kwargs:
+#         data.update(kwargs)
+#
+#     if TRACKER:
+#         try:
+#             TRACKER.send('event', data)
+#         except Exception as e:
+#             logger.warn(u"Failed to send analytics event for category '%s', action '%s': %s" % (category, action, e))
 
 
 def check_folder_writable(folder, fallback, name):
