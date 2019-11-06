@@ -208,7 +208,7 @@ def check_github(auto_update=False, notify=False):
         url = 'https://api.github.com/repos/%s/%s/releases' % (plexpy.CONFIG.GIT_USER, plexpy.CONFIG.GIT_REPO)
         releases = request.request_json(url, timeout=20, whitelist_status_code=404, validator=lambda x: type(x) == list)
 
-        if releases is None:
+        if releases is None or len(releases) == 0:
             logger.warn('Could not get releases from GitHub.')
             return plexpy.LATEST_VERSION
 
