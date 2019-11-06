@@ -10,7 +10,7 @@
 * (FIXED) Media filtering in History display.
 
 
-> **NOTE:** If migrating from any release prior to V4.0.00, I strongly recommend a clean install.
+> **NOTE:** If migrating from any release prior to V4.0.00, I recommend a clean install.
 
 ##### Changes to the installation instructions:
 * Install Python3:
@@ -19,6 +19,7 @@
     * Type: `cd /opt`
     * Type: `sudo git clone https://github.com/zSeriesGuy/Tautulli.git`
     * Type: `cd Tautulli`
+    * Type: `git checkout V4.0.00`
     * Type: `python3 -m venv /opt/Tautulli`
     * Type: `source /opt/Tautulli/bin/activate`
     * Type: `python3 -m pip install --upgrade pip setuptools pip-tools`

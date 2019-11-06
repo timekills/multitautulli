@@ -8,7 +8,7 @@ A python based web application for monitoring, analytics and notifications for [
 
 This project is based on code from [Headphones](https://github.com/rembo10/headphones) and [PlexWatchWeb](https://github.com/ecleese/plexWatchWeb).
 
-> **NOTE:** If migrating from any release prior to V4.0.00, I strongly recommend a clean install of this code.
+> **NOTE:** If migrating from any release prior to V4.0.00, I recommend a clean install of this code.
 
 ## Features
 
@@ -36,7 +36,7 @@ This project is based on code from [Headphones](https://github.com/rembo10/headp
 
 ## Installation and Support
 
-> **NOTE:** If migrating from any release prior to V4.0.00, I strongly recommend a clean install.
+> **NOTE:** If migrating from any release prior to V4.0.00, I recommend a clean install.
 
 * Read the [Installation Guides](https://github.com/Tautulli/Tautulli-Wiki/wiki/Installation) for instructions to install Tautulli.
 * The [Frequently Asked Questions](https://github.com/Tautulli/Tautulli-Wiki/wiki/Frequently-Asked-Questions) in the wiki can help you with common problems.
