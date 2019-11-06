@@ -22,8 +22,8 @@ import time
 from configobj import ConfigObj
 
 import plexpy
-import logger
-import database
+from plexpy import logger
+from plexpy import database
 
 
 def bool_int(value):

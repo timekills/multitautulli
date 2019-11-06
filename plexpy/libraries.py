@@ -18,14 +18,14 @@ import os
 import threading
 
 import plexpy
-import common
-import database
-import datatables
-import helpers
-import logger
-import plextv
-import pmsconnect
-import session
+from plexpy import common
+from plexpy import database
+from plexpy import datatables
+from plexpy import helpers
+from plexpy import logger
+#import plextv
+from plexpy import pmsconnect
+from plexpy import session
 
 config_lock = threading.Lock()
 

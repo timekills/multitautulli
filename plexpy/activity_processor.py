@@ -18,12 +18,12 @@ import json
 import time
 
 import plexpy
-import database
-import helpers
-import libraries
-import logger
-import pmsconnect
-import users
+from plexpy import database
+from plexpy import helpers
+from plexpy import libraries
+from plexpy import logger
+#import pmsconnect
+from plexpy import users
 
 
 class ActivityProcessor(object):

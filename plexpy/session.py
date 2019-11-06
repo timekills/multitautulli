@@ -15,9 +15,9 @@
 
 import cherrypy
 
-import common
-import users
 import plexpy
+from plexpy import common
+from plexpy import users
 
 def get_session_info():
     """

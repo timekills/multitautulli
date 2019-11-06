@@ -22,7 +22,7 @@ import requests
 
 import plexpy
 import plexpy.lock
-import logger
+from plexpy import logger
 
 
 # Dictionary with last request times, for rate limiting.

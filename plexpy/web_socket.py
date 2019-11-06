@@ -22,11 +22,11 @@ import time
 import websocket
 
 import plexpy
-import activity_handler
-import activity_pinger
-import activity_processor
-import database
-import logger
+from plexpy import activity_handler
+#from plexpy import activity_pinger
+from plexpy import activity_processor
+#from plexpy import database
+from plexpy import logger
 
 
 class ServerWebSocketThread(threading.Thread):

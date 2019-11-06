@@ -27,7 +27,7 @@ import threading
 import traceback
 
 import plexpy
-import helpers
+from plexpy import helpers
 from plexpy.config import _BLACKLIST_KEYS, _WHITELIST_KEYS
 
 # These settings are for file logging only

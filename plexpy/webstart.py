@@ -16,11 +16,12 @@
 import os
 import sys
 
-import plexpy
 import cherrypy
 import portend
-import logger
-import webauth
+
+import plexpy
+from plexpy import logger
+from plexpy import webauth
 from plexpy.helpers import create_https_certificates
 from plexpy.webserve import WebInterface
 

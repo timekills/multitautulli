@@ -14,14 +14,15 @@
 #  along with Tautulli.  If not, see <http://www.gnu.org/licenses/>.
 
 import sqlite3
-from xml.dom import minidom
+#from xml.dom import minidom
 import os
-import plexpy
-import database
-import libraries
-import logger
 import json
-import servers
+
+import plexpy
+from plexpy import database
+from plexpy import libraries
+from plexpy import logger
+from plexpy import servers
 
 
 def validate_database(database=None):

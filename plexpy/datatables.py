@@ -15,9 +15,9 @@
 
 import re
 
-import database
-import helpers
-import logger
+from plexpy import database
+from plexpy import helpers
+from plexpy import logger
 
 
 class DataTables(object):

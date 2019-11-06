@@ -24,8 +24,8 @@ import certifi
 import urllib3
 
 import plexpy
-import helpers
-import logger
+from plexpy import helpers
+from plexpy import logger
 
 
 class HTTPHandler(object):

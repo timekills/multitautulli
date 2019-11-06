@@ -16,8 +16,8 @@
 import os
 
 import plexpy
-import helpers
-import logger
+from plexpy import helpers
+from plexpy import logger
 
 def get_log_tail(window=20, parsed=True, log_type="server"):
 

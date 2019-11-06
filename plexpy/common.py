@@ -16,7 +16,7 @@
 import platform
 from collections import OrderedDict
 
-import version
+from plexpy import version
 
 # Identify Our Application
 PRODUCT = 'Tautulli'

@@ -19,16 +19,16 @@ import time
 import urllib.parse
 
 import plexpy
-import activity_processor
-import common
-import helpers
-import http_handler
-import logger
-import plextv
-import session
-import users
-import database
-import libraries
+from plexpy import activity_processor
+from plexpy import common
+from plexpy import helpers
+from plexpy import http_handler
+from plexpy import logger
+from plexpy import plextv
+from plexpy import session
+from plexpy import users
+from plexpy import database
+from plexpy import libraries
 
 
 class PmsConnect(object):

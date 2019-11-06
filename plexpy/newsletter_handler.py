@@ -21,9 +21,9 @@ from apscheduler.triggers.cron import CronTrigger
 import email.utils
 
 import plexpy
-import database
-import logger
-import newsletters
+from plexpy import database
+from plexpy import logger
+from plexpy import newsletters
 
 
 NEWSLETTER_SCHED = BackgroundScheduler()

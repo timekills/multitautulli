@@ -27,7 +27,7 @@ import jwt
 import threading
 
 import plexpy
-import logger
+from plexpy import logger
 from plexpy.database import MonitorDatabase
 from plexpy.users import Users, refresh_users
 from plexpy.plextv import PlexTV

@@ -44,8 +44,8 @@ from xml.dom import minidom
 import xmltodict
 
 import plexpy
-import logger
-import request
+from plexpy import logger
+from plexpy import request
 from plexpy.api2 import API2
 
 
