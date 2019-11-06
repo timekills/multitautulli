@@ -38,6 +38,7 @@ class PlexTV(object):
         self.username = username
         self.password = password
         self.token = token
+        self.headers = headers
 
         self.urls = 'https://plex.tv'
         self.timeout = plexpy.CONFIG.PMS_TIMEOUT
@@ -61,7 +62,7 @@ class PlexTV(object):
                                                      token=self.token,
                                                      timeout=self.timeout,
                                                      ssl_verify=self.ssl_verify,
-                                                     headers=headers)
+                                                     headers=self.headers)
 
         plexpass = self.get_plexpass_status()
         plexpy.CONFIG.PMS_PLEXPASS = plexpass
@@ -73,7 +74,11 @@ class PlexTV(object):
         headers = {'Content-Type': 'application/xml; charset=utf-8',
                    'Authorization': 'Basic %s' % base64string}
 
-        request_handler = self.http_handler
+        request_handler = http_handler.HTTPHandler(urls=self.urls,
+                                                   token=self.token,
+                                                   timeout=self.timeout,
+                                                   ssl_verify=self.ssl_verify,
+                                                   headers=self.headers)
         request = request_handler.make_request(uri=uri,
                                                request_type='POST',
                                                headers=headers,
@@ -148,7 +153,11 @@ class PlexTV(object):
         return server_tokens
 
     def get_plextv_pin(self, pin='', output_format=''):
-        request_handler = self.http_handler
+        request_handler = http_handler.HTTPHandler(urls=self.urls,
+                                                   token=self.token,
+                                                   timeout=self.timeout,
+                                                   ssl_verify=self.ssl_verify,
+                                                   headers=self.headers)
         if pin:
             uri = '/api/v2/pins/' + pin
             request = request_handler.make_request(uri=uri,
@@ -196,7 +205,11 @@ class PlexTV(object):
             return []
 
     def get_plextv_friends(self, output_format=''):
-        request_handler = self.http_handler
+        request_handler = http_handler.HTTPHandler(urls=self.urls,
+                                                   token=self.token,
+                                                   timeout=self.timeout,
+                                                   ssl_verify=self.ssl_verify,
+                                                   headers=self.headers)
         uri = '/api/users'
         request = request_handler.make_request(uri=uri,
                                                request_type='GET',
@@ -205,7 +218,11 @@ class PlexTV(object):
         return request
 
     def get_plextv_user_details(self, output_format=''):
-        request_handler = self.http_handler
+        request_handler = http_handler.HTTPHandler(urls=self.urls,
+                                                   token=self.token,
+                                                   timeout=self.timeout,
+                                                   ssl_verify=self.ssl_verify,
+                                                   headers=self.headers)
         uri = '/users/account'
         request = request_handler.make_request(uri=uri,
                                                request_type='GET',
@@ -214,7 +231,11 @@ class PlexTV(object):
         return request
 
     def get_plextv_devices_list(self, output_format=''):
-        request_handler = self.http_handler
+        request_handler = http_handler.HTTPHandler(urls=self.urls,
+                                                   token=self.token,
+                                                   timeout=self.timeout,
+                                                   ssl_verify=self.ssl_verify,
+                                                   headers=self.headers)
         uri = '/devices.xml'
         request = request_handler.make_request(uri=uri,
                                                request_type='GET',
@@ -223,7 +244,11 @@ class PlexTV(object):
         return request
 
     def get_plextv_server_list(self, output_format=''):
-        request_handler = self.http_handler
+        request_handler = http_handler.HTTPHandler(urls=self.urls,
+                                                   token=self.token,
+                                                   timeout=self.timeout,
+                                                   ssl_verify=self.ssl_verify,
+                                                   headers=self.headers)
         uri = '/pms/servers.xml'
         request = request_handler.make_request(uri=uri,
                                                request_type='GET',
@@ -232,7 +257,11 @@ class PlexTV(object):
         return request
 
     def get_plextv_shared_servers(self, machine_id='', output_format=''):
-        request_handler = self.http_handler
+        request_handler = http_handler.HTTPHandler(urls=self.urls,
+                                                   token=self.token,
+                                                   timeout=self.timeout,
+                                                   ssl_verify=self.ssl_verify,
+                                                   headers=self.headers)
         uri = '/api/servers/%s/shared_servers' % machine_id
         request = request_handler.make_request(uri=uri,
                                                request_type='GET',
@@ -241,7 +270,11 @@ class PlexTV(object):
         return request
 
     def get_plextv_sync_lists(self, machine_id='', output_format=''):
-        request_handler = self.http_handler
+        request_handler = http_handler.HTTPHandler(urls=self.urls,
+                                                   token=self.token,
+                                                   timeout=self.timeout,
+                                                   ssl_verify=self.ssl_verify,
+                                                   headers=self.headers)
         uri = '/servers/%s/sync_lists' % machine_id
         request = request_handler.make_request(uri=uri,
                                                request_type='GET',
@@ -250,7 +283,11 @@ class PlexTV(object):
         return request
 
     def get_plextv_resources(self, include_https=False, output_format=''):
-        request_handler = self.http_handler
+        request_handler = http_handler.HTTPHandler(urls=self.urls,
+                                                   token=self.token,
+                                                   timeout=self.timeout,
+                                                   ssl_verify=self.ssl_verify,
+                                                   headers=self.headers)
         if include_https:
             uri = '/api/resources?includeHttps=1'
         else:
@@ -262,7 +299,11 @@ class PlexTV(object):
         return request
 
     def get_plextv_downloads(self, plexpass=False, output_format=''):
-        request_handler = self.http_handler
+        request_handler = http_handler.HTTPHandler(urls=self.urls,
+                                                   token=self.token,
+                                                   timeout=self.timeout,
+                                                   ssl_verify=self.ssl_verify,
+                                                   headers=self.headers)
         if plexpass:
             uri = '/api/downloads/5.json?channel=plexpass'
         else:
@@ -274,7 +315,11 @@ class PlexTV(object):
         return request
 
     def delete_plextv_device(self, device_id='', output_format=''):
-        request_handler = self.http_handler
+        request_handler = http_handler.HTTPHandler(urls=self.urls,
+                                                   token=self.token,
+                                                   timeout=self.timeout,
+                                                   ssl_verify=self.ssl_verify,
+                                                   headers=self.headers)
         uri = '/devices/%s.xml' % device_id
         request = request_handler.make_request(uri=uri,
                                                request_type='DELETE',
@@ -283,7 +328,11 @@ class PlexTV(object):
         return request
 
     def delete_plextv_device_sync_lists(self, client_id='', output_format=''):
-        request_handler = self.http_handler
+        request_handler = http_handler.HTTPHandler(urls=self.urls,
+                                                   token=self.token,
+                                                   timeout=self.timeout,
+                                                   ssl_verify=self.ssl_verify,
+                                                   headers=self.headers)
         uri = '/devices/%s/sync_items' % client_id
         request = request_handler.make_request(uri=uri,
                                                request_type='GET',
@@ -292,7 +341,11 @@ class PlexTV(object):
         return request
 
     def delete_plextv_sync(self, client_id='', sync_id='', output_format=''):
-        request_handler = self.http_handler
+        request_handler = http_handler.HTTPHandler(urls=self.urls,
+                                                   token=self.token,
+                                                   timeout=self.timeout,
+                                                   ssl_verify=self.ssl_verify,
+                                                   headers=self.headers)
         uri = '/devices/%s/sync_items/%s' % (client_id, sync_id)
         request = request_handler.make_request(uri=uri,
                                                request_type='DELETE',
@@ -301,7 +354,11 @@ class PlexTV(object):
         return request
 
     def cloud_server_status(self, output_format=''):
-        request_handler = self.http_handler
+        request_handler = http_handler.HTTPHandler(urls=self.urls,
+                                                   token=self.token,
+                                                   timeout=self.timeout,
+                                                   ssl_verify=self.ssl_verify,
+                                                   headers=self.headers)
         uri = '/api/v2/cloud_server'
         request = request_handler.make_request(uri=uri,
                                                request_type='GET',
