@@ -502,7 +502,7 @@ def start():
             PMS_SERVERS = plexServers()
             PMS_SERVERS.start()
 
-        # TODO: Handle this
+        # TODO: JLN - Handle this
         # Initialize System Analytics
         # if CONFIG.SYSTEM_ANALYTICS:
         #     global TRACKER
@@ -517,9 +517,9 @@ def start():
         #
         #     analytics_event(category='system', action='start')
         #
-        # # Schedule newsletters
-        # newsletter_handler.NEWSLETTER_SCHED.start()
-        # newsletter_handler.schedule_newsletters()
+        # Schedule newsletters
+        newsletter_handler.NEWSLETTER_SCHED.start()
+        newsletter_handler.schedule_newsletters()
         #
         _STARTED = True
 
