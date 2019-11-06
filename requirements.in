@@ -13,10 +13,10 @@ pyOpenSSL
 passlib
 requests
 pywin32; sys_platform == "win32"
+infi.systray; sys_platform == "win32"
 oauthlib
 xmltodict
 websocket-client
-infi.systray
 geoip2
 pyjwt
 logutils
