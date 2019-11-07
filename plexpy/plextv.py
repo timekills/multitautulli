@@ -144,8 +144,9 @@ class PlexTV(object):
             if 'server' in helpers.get_xml_attr(a, 'provides'):
                 server_identifier = helpers.get_xml_attr(a, 'clientIdentifier')
                 server_token = helpers.get_xml_attr(a, 'accessToken')
-                server_id = plexpy.PMS_SERVERS.get_server_by_identifier(server_identifier).CONFIG.ID
-                if server_id:
+                server = plexpy.PMS_SERVERS.get_server_by_identifier(server_identifier)
+                if server:
+                    server_id = server.CONFIG.ID
                     server_tokens[server_id] = server_token
 
         return server_tokens
