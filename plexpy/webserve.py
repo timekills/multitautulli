@@ -250,7 +250,7 @@ class WebInterface(object):
     @cherrypy.tools.json_out()
     @requireAuth(member_of("admin"))
     @addtoapi()
-    def terminate_session(self, server_id, session_key=None, session_id=None, message=None, **kwargs):
+    def terminate_session(self, server_id=None, session_key=None, session_id=None, message=None, **kwargs):
         """ Stop a streaming session.
 
             ```
@@ -265,13 +265,28 @@ class WebInterface(object):
                 None
             ```
         """
-        server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
-        result = server.PMSCONNECTION.terminate_session(session_key=session_key, session_id=session_id, message=message)
-
-        if result:
-            return {'result': 'success', 'message': 'Session terminated.'}
+        server = None
+        if server_id:
+            server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
         else:
-            return {'result': 'error', 'message': 'Failed to terminate session.'}
+            for server in plexpy.PMS_SERVERS:
+                activity = server.PMSCONNECTION.get_current_activity()
+                sessions = activity['sessions']
+                session = {'session_id': ''}
+                for session in sessions:
+                    if session_id and session_id == session['session_id']:
+                        if not session_key:
+                            session_key = session['session_key']
+                        break
+                if session_id and session_id == session['session_id']:
+                    break
+
+        if server and session_id:
+            result = server.PMSCONNECTION.terminate_session(session_key=session_key, session_id=session_id, message=message)
+            if result:
+                return {'result': 'success', 'message': 'Session terminated.'}
+
+        return {'result': 'error', 'message': 'Failed to terminate session.'}
 
     @cherrypy.expose
     @cherrypy.tools.json_out()

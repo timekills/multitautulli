@@ -41,6 +41,7 @@ paho-mqtt==1.5.0
 passlib==1.7.1
 pip-tools==4.2.0
 portend==2.6
+profilehooks==1.11.0
 pycparser==2.19           # via cffi
 pyjwt==1.7.1
 pynma==1.0
@@ -49,9 +50,9 @@ python-dateutil==2.8.1    # via arrow
 python-twitter==3.5
 pytz==2019.3              # via apscheduler, tempora, tzlocal
 pywin32==225 ; sys_platform == "win32"
-requests-oauthlib==1.2.0  # via python-twitter
+requests-oauthlib==1.3.0  # via python-twitter
 requests==2.22.0
-six==1.12.0               # via apscheduler, bleach, cheroot, cloudinary, configobj, cryptography, mock, pip-tools, pyopenssl, python-dateutil, tempora, websocket-client
+six==1.13.0               # via apscheduler, bleach, cheroot, cloudinary, configobj, cryptography, mock, pip-tools, pyopenssl, python-dateutil, tempora, websocket-client
 soupsieve==1.9.5          # via beautifulsoup4
 tempora==1.14.1           # via portend
 tzlocal==2.0.0

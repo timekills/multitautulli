@@ -33,6 +33,7 @@ bleach
 paho-mqtt
 gntp
 PyNMA
+profilehooks
 
 #asn1crypto
 #backports.functools-lru-cache
