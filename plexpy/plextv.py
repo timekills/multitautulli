@@ -17,10 +17,8 @@
 #  along with Tautulli.  If not, see <http://www.gnu.org/licenses/>.
 
 import base64
-#import json
 
 import plexpy
-#import common
 from plexpy import helpers
 from plexpy import http_handler
 from plexpy import logger

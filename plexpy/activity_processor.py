@@ -22,7 +22,6 @@ from plexpy import database
 from plexpy import helpers
 from plexpy import libraries
 from plexpy import logger
-#import pmsconnect
 from plexpy import users
 
 

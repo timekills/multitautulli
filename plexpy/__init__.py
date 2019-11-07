@@ -35,7 +35,6 @@ from apscheduler.triggers.interval import IntervalTrigger
 #from UniversalAnalytics import Tracker
 
 from plexpy import activity_handler
-#import activity_pinger
 from plexpy import common
 from plexpy import database
 from plexpy import datafactory
@@ -46,10 +45,7 @@ from plexpy import newsletters
 from plexpy import newsletter_handler
 from plexpy import notification_handler
 from plexpy import notifiers
-#import plextv
-#import users
 from plexpy import versioncheck
-#import web_socket
 from plexpy.config import Config
 from plexpy.servers import plexServer, plexServers
 from plexpy.plextv import PlexTV

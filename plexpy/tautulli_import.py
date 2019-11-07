@@ -14,7 +14,6 @@
 #  along with Tautulli.  If not, see <http://www.gnu.org/licenses/>.
 
 import sqlite3
-#from xml.dom import minidom
 import os
 import json
 

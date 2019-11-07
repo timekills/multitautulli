@@ -17,8 +17,6 @@ import arrow
 import sqlite3
 from xml.dom import minidom
 
-#import plexpy
-#import activity_pinger
 from plexpy import activity_processor
 from plexpy import database
 from plexpy import helpers

@@ -26,8 +26,6 @@ from plexpy import datafactory
 from plexpy import helpers
 from plexpy import logger
 from plexpy import notification_handler
-#import pmsconnect
-#from servers import plexServer
 
 ACTIVITY_SCHED = BackgroundScheduler()
 

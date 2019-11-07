@@ -29,9 +29,7 @@ from plexpy import helpers
 from plexpy import libraries
 from plexpy import logger
 from plexpy import newsletter_handler
-#import pmsconnect
 from plexpy.notifiers import send_notification, EMAIL
-#from plexpy.servers import plexServer
 
 
 AGENT_IDS = {

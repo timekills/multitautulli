@@ -23,9 +23,7 @@ from plexpy import datatables
 from plexpy import helpers
 from plexpy import libraries
 from plexpy import logger
-#from plexpy import plextv
 from plexpy import session
-#from plexpy import pmsconnect
 
 
 def refresh_users():

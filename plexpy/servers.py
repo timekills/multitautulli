@@ -13,23 +13,13 @@
 #  You should have received a copy of the GNU General Public License
 #  along with Tautulli.  If not, see <http://www.gnu.org/licenses/>.
 
-#import os
-#import sqlite3
-#import sys
-#import subprocess
 import websocket
 import threading
 from threading import Event, Thread
-#import datetime
-#import uuid
-#import json
 from apscheduler.schedulers.background import BackgroundScheduler
-#from apscheduler.triggers.interval import IntervalTrigger
 
 import plexpy
-#from plextv import PlexTV
 from plexpy import helpers
-#from plexpy import http_handler
 from plexpy import activity_handler
 from plexpy import activity_processor
 from plexpy import activity_pinger

@@ -23,9 +23,7 @@ import websocket
 
 import plexpy
 from plexpy import activity_handler
-#from plexpy import activity_pinger
 from plexpy import activity_processor
-#from plexpy import database
 from plexpy import logger
 
 

@@ -33,14 +33,10 @@ from plexpy import activity_processor
 from plexpy import common
 from plexpy import database
 from plexpy import datafactory
-#import libraries
 from plexpy import logger
 from plexpy import helpers
 from plexpy import notifiers
-#import plextv
-#import pmsconnect
 from plexpy import request
-#import users
 from plexpy.newsletter_handler import notify as notify_newsletter
 
 
