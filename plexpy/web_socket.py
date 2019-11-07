@@ -116,6 +116,17 @@ class ServerWebSocket(object):
                 # successfully received data, reset reconnects counter
                 reconnects = 0
 
+            except websocket.WebSocketTimeoutException:
+                if reconnects == 0:
+                    logger.warn(u"Tautulli WebSocket :: %s: Connection timed out." % self.server.CONFIG.PMS_NAME)
+
+                if not self.server.CONFIG.PMS_IS_CLOUD and reconnects < plexpy.CONFIG.WEBSOCKET_CONNECTION_ATTEMPTS:
+                    reconnects += 1
+                else:
+                    logger.error(u"Tautulli WebSocket :: %s: %s." % (self.server.CONFIG.PMS_NAME, e))
+                    self.close()
+                    break
+
             except websocket.WebSocketConnectionClosedException:
                 if self.ws_shutdown:
                     break
@@ -147,20 +158,9 @@ class ServerWebSocket(object):
                 if self.ws_shutdown:
                     break
 
-                if e.message == '[Errno 110] Connection timed out.':
-                    if reconnects == 0:
-                        logger.warn(u"Tautulli WebSocket :: %s: Connection timed out." % self.server.CONFIG.PMS_NAME)
-
-                    if not self.server.CONFIG.PMS_IS_CLOUD and reconnects < plexpy.CONFIG.WEBSOCKET_CONNECTION_ATTEMPTS:
-                        reconnects += 1
-                    else:
-                        logger.error(u"Tautulli WebSocket :: %s: %s." % (self.server.CONFIG.PMS_NAME, e))
-                        self.close()
-                        break
-                else:
-                    logger.error(u"Tautulli WebSocket :: %s: %s." % (self.server.CONFIG.PMS_NAME, e))
-                    self.close()
-                    break
+                logger.error(u"Tautulli WebSocket :: %s: %s." % (self.server.CONFIG.PMS_NAME, e))
+                self.close()
+                break
 
         if not self.server.WS_CONNECTED and not self.ws_shutdown:
             self.on_disconnect()
