@@ -46,8 +46,10 @@ def runGit(args):
             p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True, cwd=plexpy.PROG_DIR)
             output, err = p.communicate()
             output = output.decode('utf-8').strip()
+            for line in output.split('\n'):
+                if line:
+                    logger.debug('Git output: ' + line)
 
-            logger.debug('Git output: ' + output)
         except OSError:
             logger.debug('Command failed: %s', cmd)
             continue
@@ -431,7 +433,7 @@ def pip_sync():
 
         for line in output.split('\n'):
             if line:
-                logger.info('pip-sync output: ' + line)
+                logger.debug('pip-sync output: ' + line)
 
     except Exception as e:
         logger.error('Command failed: %s' % e)
