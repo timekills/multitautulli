@@ -135,8 +135,7 @@ def initialize(config_file):
             return False
 
         if CONFIG.HTTP_PORT < 21 or CONFIG.HTTP_PORT > 65535:
-            logger.warn(
-                u"HTTP_PORT out of bounds: 21 < %s < 65535", CONFIG.HTTP_PORT)
+            logger.warn(u"HTTP_PORT out of bounds: 21 < %s < 65535", CONFIG.HTTP_PORT)
             CONFIG.HTTP_PORT = 8181
 
         if not CONFIG.HTTPS_CERT:
