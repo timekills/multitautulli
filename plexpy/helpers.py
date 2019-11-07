@@ -585,7 +585,7 @@ def install_geoip_db():
     try:
         maxmind = urllib.request.URLopener()
         maxmind.retrieve(maxmind_url + geolite2_gz, temp_gz)
-        md5_checksum = urllib.request.urlopen(maxmind_url + geolite2_md5).read()
+        md5_checksum = urllib.request.urlopen(maxmind_url + geolite2_md5).read().decode('utf-8')
     except Exception as e:
         logger.error(u"Tautulli Helpers :: Failed to download GeoLite2 gzip file from MaxMind: %s" % e)
         return False
