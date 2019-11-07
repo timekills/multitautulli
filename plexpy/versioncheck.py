@@ -331,7 +331,7 @@ def update():
             return
 
     output, err = pip_sync()
-    logger.info("Update Complete")
+    logger.info("Tautulli Update Complete")
     return True
 
 
