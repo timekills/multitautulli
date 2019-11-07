@@ -70,7 +70,7 @@ class plexServers(object):
 
         for (server_name, server) in self.__dict__.items():
             if isinstance(server, plexServer) and server.CONFIG.PMS_IS_ENABLED and not server.CONFIG.PMS_IS_DELETED:
-                server.start()
+                threading.Thread(target=server.start).start()
 
     def stop(self):
         if self.SCHED.running:

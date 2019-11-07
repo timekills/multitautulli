@@ -96,7 +96,7 @@ class ServerWebSocket(object):
         # Try an open the websocket connection
         logger.info(u"Tautulli WebSocket :: %s: Opening %s websocket." % (self.server.CONFIG.PMS_NAME, secure))
         try:
-            self.WS_CONNECTION = create_connection(uri, header=header)
+            self.WS_CONNECTION = create_connection(uri, header=header, timeout=10)
             logger.info(u"Tautulli WebSocket :: %s: Ready" % self.server.CONFIG.PMS_NAME)
             self.server.WS_CONNECTED = True
         except (websocket.WebSocketException, IOError, Exception) as e:
