@@ -96,7 +96,7 @@ class ServerWebSocket(object):
         # Try an open the websocket connection
         logger.info(u"Tautulli WebSocket :: %s: Opening %s websocket." % (self.server.CONFIG.PMS_NAME, secure))
         try:
-            self.WS_CONNECTION = create_connection(uri, header=header, timeout=10)
+            self.WS_CONNECTION = create_connection(uri, header=header, timeout=30)
             logger.info(u"Tautulli WebSocket :: %s: Ready" % self.server.CONFIG.PMS_NAME)
             self.server.WS_CONNECTED = True
         except (websocket.WebSocketException, IOError, Exception) as e:
@@ -115,13 +115,14 @@ class ServerWebSocket(object):
                 reconnects = 0
 
             except websocket.WebSocketTimeoutException:
-                if reconnects == 0:
-                    logger.warn(u"Tautulli WebSocket :: %s: Connection timed out." % self.server.CONFIG.PMS_NAME)
+                if self.ws_shutdown:
+                    break
 
-                if not self.server.CONFIG.PMS_IS_CLOUD and reconnects < plexpy.CONFIG.WEBSOCKET_CONNECTION_ATTEMPTS:
+                logger.warn(u"Tautulli WebSocket :: %s: Connection timed out." % self.server.CONFIG.PMS_NAME)
+
+                if reconnects < plexpy.CONFIG.WEBSOCKET_CONNECTION_ATTEMPTS:
                     reconnects += 1
                 else:
-                    logger.error(u"Tautulli WebSocket :: %s: %s." % (self.server.CONFIG.PMS_NAME, e))
                     self.close()
                     break
 
