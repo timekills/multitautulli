@@ -257,7 +257,7 @@ def update():
             output, err = runGit('checkout %s/%s requirements.txt' % (plexpy.CONFIG.GIT_REMOTE, plexpy.CONFIG.GIT_BRANCH))
         else:
             logger.error("Differences Found. Unable to update.")
-            logger.info('Output: ' + output)
+            logger.info('Out-of-Sync File: ' + output)
             return False
 
         output, err = runGit('pull ' + plexpy.CONFIG.GIT_REMOTE + ' ' + plexpy.CONFIG.GIT_BRANCH)
