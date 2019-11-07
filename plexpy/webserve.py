@@ -2382,8 +2382,7 @@ class WebInterface(object):
     @requireAuth(member_of("admin"))
     def delete_sync_rows(self, client_id, sync_id, **kwargs):
         if client_id and sync_id:
-            plex_tv = plextv.PlexTV()
-            delete_row = plex_tv.delete_sync(client_id=client_id, sync_id=sync_id)
+            delete_row = plexpy.PLEXTV.delete_sync(client_id=client_id, sync_id=sync_id)
             return {'message': 'Sync deleted'}
         else:
             return {'message': 'no data received'}
@@ -4902,8 +4901,7 @@ class WebInterface(object):
     def get_friends_list(self, **kwargs):
         """ Get the friends list of the server owner for Plex.tv. """
 
-        plex_tv = plextv.PlexTV()
-        result = plex_tv.get_plextv_friends('json')
+        result = plexpy.PLEXTV.get_plextv_friends('json')
 
         if result:
             return result
@@ -4916,8 +4914,7 @@ class WebInterface(object):
     def get_user_details(self, **kwargs):
         """ Get all details about a the server's owner from Plex.tv. """
 
-        plex_tv = plextv.PlexTV()
-        result = plex_tv.get_plextv_user_details('json')
+        result = plexpy.PLEXTV.get_plextv_user_details('json')
 
         if result:
             return result

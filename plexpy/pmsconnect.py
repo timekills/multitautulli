@@ -1662,12 +1662,11 @@ class PmsConnect(object):
                 and not session.getElementsByTagName('TranscodeSession') \
                 and helpers.get_xml_attr(session, 'ratingKey').isdigit() \
                 and plexpy.CONFIG.PMS_PLEXPASS:
-            plex_tv = plextv.PlexTV()
             parent_rating_key = helpers.get_xml_attr(session, 'parentRatingKey')
             grandparent_rating_key = helpers.get_xml_attr(session, 'grandparentRatingKey')
 
-            synced_items = plex_tv.get_synced_items(client_id_filter=player_details['machine_id'],
-                                                    rating_key_filter=[rating_key, parent_rating_key, grandparent_rating_key])
+            synced_items = plexpy.PLEXTV.get_synced_items(client_id_filter=player_details['machine_id'],
+                                                          rating_key_filter=[rating_key, parent_rating_key, grandparent_rating_key])
             if synced_items:
                 synced_item_details = synced_items[0]
                 sync_id = synced_item_details['sync_id']
