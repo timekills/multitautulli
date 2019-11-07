@@ -595,7 +595,7 @@ class Newsletter(object):
         return parameters
 
     def build_text(self):
-        from notification_handler import CustomFormatter
+        from plexpy.notification_handler import CustomFormatter
         custom_formatter = CustomFormatter()
 
         try:
@@ -634,7 +634,7 @@ class Newsletter(object):
         return subject, body, message
 
     def build_filename(self):
-        from notification_handler import CustomFormatter
+        from plexpy.notification_handler import CustomFormatter
         custom_formatter = CustomFormatter()
 
         try:
@@ -679,7 +679,7 @@ class RecentlyAdded(Newsletter):
     _TEMPLATE = 'recently_added.html'
 
     def _get_recently_added(self, media_type=None):
-        from notification_handler import format_group_index
+        from plexpy.notification_handler import format_group_index
 
         recently_added = []
         done = False
@@ -801,7 +801,7 @@ class RecentlyAdded(Newsletter):
         return recently_added
 
     def retrieve_data(self):
-        from notification_handler import get_img_info, set_hash_image_info
+        from plexpy.notification_handler import get_img_info, set_hash_image_info
 
         if not self.config['incl_libraries'] or not self.config['incl_servers']:
             logger.warn(u"Tautulli Newsletters :: Failed to retrieve %s newsletter data: no libraries selected." % self.NAME)
