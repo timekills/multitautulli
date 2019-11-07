@@ -330,9 +330,9 @@ def update():
             )
             return
 
-        output, err = pip_sync()
-        logger.info("Update Complete")
-        return True
+    output, err = pip_sync()
+    logger.info("Update Complete")
+    return True
 
 
 def checkout_git_branch():
