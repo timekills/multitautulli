@@ -245,14 +245,14 @@ def update():
 
     elif plexpy.INSTALL_TYPE == 'git':
 
-        output, err = runGit('diff --name-only %s' % plexpy.CONFIG.GIT_REMOTE)
+        output, err = runGit('diff --name-only %s/%s' % (plexpy.CONFIG.GIT_REMOTE, plexpy.CONFIG.GIT_BRANCH))
 
         if output == '':
             logger.debug("No differences found from the origin")
 
         elif output == 'requirements.txt':
             logger.warn('Requirements file is out of sync. Restoring to original.')
-            output, err = runGit('checkout %s requirements.txt' % plexpy.CONFIG.GIT_REMOTE)
+            output, err = runGit('checkout %s/%s requirements.txt' % (plexpy.CONFIG.GIT_REMOTE, plexpy.CONFIG.GIT_BRANCH))
         else:
             logger.error("Differences Found. Unable to update.")
             logger.info('Output: ' + output)
