@@ -24,7 +24,7 @@
     * Type: `source /opt/Tautulli/bin/activate`
     * Type: `python3 -m pip install --upgrade pip setuptools pip-tools`
     * Type: `pip3 install -r /opt/Tautulli/requirements.txt`
-    
+    * If running as a daemon, update the startup command in /lib/systemd/system/tautulli.service to `ExecStart=/opt/Tautulli/bin/python3 /opt/Tautulli/Tautulli.py`
 
 ## v3.0.00-beta (2019-01-22)
 
