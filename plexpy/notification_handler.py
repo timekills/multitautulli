@@ -451,7 +451,6 @@ def set_notify_success(notification_id):
 
 
 def build_media_notify_params(notify_action=None, session=None, timeline=None, manual_trigger=False, **kwargs):
-    server = plexpy.PMS_SERVERS.get_server_by_id(session['server_id'])
     # Get time formats
     date_format = helpers.momentjs_to_arrow(plexpy.CONFIG.DATE_FORMAT)
     time_format = helpers.momentjs_to_arrow(plexpy.CONFIG.TIME_FORMAT)
@@ -460,8 +459,10 @@ def build_media_notify_params(notify_action=None, session=None, timeline=None, m
     # Get metadata for the item
     if session:
         rating_key = session['rating_key']
+        server = plexpy.PMS_SERVERS.get_server_by_id(session['server_id'])
     elif timeline:
         rating_key = timeline['rating_key']
+        server = plexpy.PMS_SERVERS.get_server_by_id(timeline['server_id'])
 
     notify_params = defaultdict(str)
     if session:
