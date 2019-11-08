@@ -374,7 +374,7 @@ class TimelineHandler(object):
             identifier = self.timeline.get('identifier')
             state_type = self.timeline.get('state')
             media_type = media_types.get(self.timeline.get('type'))
-            section_id = self.timeline.get('sectionID', 0)
+            section_id = int(self.timeline.get('sectionID', 0))
             title = self.timeline.get('title', 'Unknown')
             metadata_state = self.timeline.get('metadataState')
             media_state = self.timeline.get('mediaState')
