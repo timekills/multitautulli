@@ -58,10 +58,11 @@ def schedule_newsletters(newsletter_id=None):
 def schedule_newsletter_job(newsletter_job_id, name='', func=None, remove_job=False, args=None, cron=None):
     # Adjust cron value day-of-week to Monday thru Sunday.
     dow_table = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
-    cron_dow = cron.split(" ")
-    if cron_dow[4].isdigit():
-        cron_dow[4] = dow_table[int(cron_dow[4])]
-        cron = ' '.join(cron_dow)
+    if cron:
+        cron_dow = cron.split(" ")
+        if cron_dow[4].isdigit():
+            cron_dow[4] = dow_table[int(cron_dow[4])]
+            cron = ' '.join(cron_dow)
 
     if NEWSLETTER_SCHED.get_job(newsletter_job_id):
         if remove_job:
