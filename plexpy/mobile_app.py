@@ -15,10 +15,8 @@
 
 import time
 
-import plexpy
-import database
-import helpers
-import logger
+from plexpy import database
+from plexpy import logger
 
 
 TEMP_DEVICE_TOKEN = None

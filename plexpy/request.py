@@ -22,7 +22,7 @@ import requests
 
 import plexpy
 import plexpy.lock
-import logger
+from plexpy import logger
 
 
 # Dictionary with last request times, for rate limiting.
@@ -319,7 +319,7 @@ def server_message(response, return_msg=False):
 
         if return_msg:
             try:
-                return unicode(message, 'UTF-8')
+                return str(message, 'UTF-8')
             except:
                 return message
 

@@ -23,15 +23,13 @@ import os
 import re
 
 import plexpy
-import common
-import database
-import helpers
-import libraries
-import logger
-import newsletter_handler
-import pmsconnect
-from notifiers import send_notification, EMAIL
-from servers import plexServer
+from plexpy import common
+from plexpy import database
+from plexpy import helpers
+from plexpy import libraries
+from plexpy import logger
+from plexpy import newsletter_handler
+from plexpy.notifiers import send_notification, EMAIL
 
 
 AGENT_IDS = {
@@ -227,9 +225,9 @@ def set_newsletter_config(newsletter_id=None, agent_id=None, **kwargs):
     email_config_prefix = 'newsletter_email_'
 
     newsletter_config = {k[len(config_prefix):]: kwargs.pop(k)
-                         for k in kwargs.keys() if k.startswith(config_prefix)}
+                         for k in list(kwargs.keys()) if k.startswith(config_prefix)}
     email_config = {k[len(email_config_prefix):]: kwargs.pop(k)
-                    for k in kwargs.keys() if k.startswith(email_config_prefix)}
+                    for k in list(kwargs.keys()) if k.startswith(email_config_prefix)}
 
     subject = kwargs.pop('subject')
     body = kwargs.pop('body')
@@ -409,7 +407,7 @@ class Newsletter(object):
             return default
 
         new_config = {}
-        for k, v in default.iteritems():
+        for k, v in default.items():
             if isinstance(v, int):
                 new_config[k] = helpers.cast_to_int(config.get(k, v))
             elif isinstance(v, list):
@@ -509,8 +507,8 @@ class Newsletter(object):
         try:
             with open(newsletter_file_fp, 'wb') as n_file:
                 for line in self.newsletter.encode('utf-8').splitlines():
-                    if '<!-- IGNORE SAVE -->' not in line:
-                        n_file.write(line + '\r\n')
+                    if b'<!-- IGNORE SAVE -->' not in line:
+                        n_file.write(line + b'\r\n')
                         #n_file.write(line.strip())
 
             logger.info(u"Tautulli Newsletters :: %s newsletter saved to '%s'" % (self.NAME, newsletter_file))
@@ -597,58 +595,58 @@ class Newsletter(object):
         return parameters
 
     def build_text(self):
-        from notification_handler import CustomFormatter
+        from plexpy.notification_handler import CustomFormatter
         custom_formatter = CustomFormatter()
 
         try:
-            subject = custom_formatter.format(unicode(self.subject), **self.parameters)
+            subject = custom_formatter.format(str(self.subject), **self.parameters)
         except LookupError as e:
             logger.error(
                 u"Tautulli Newsletter :: Unable to parse parameter %s in newsletter subject. Using fallback." % e)
-            subject = unicode(self._DEFAULT_SUBJECT).format(**self.parameters)
+            subject = str(self._DEFAULT_SUBJECT).format(**self.parameters)
         except Exception as e:
             logger.error(
                 u"Tautulli Newsletter :: Unable to parse custom newsletter subject: %s. Using fallback." % e)
-            subject = unicode(self._DEFAULT_SUBJECT).format(**self.parameters)
+            subject = str(self._DEFAULT_SUBJECT).format(**self.parameters)
 
         try:
-            body = custom_formatter.format(unicode(self.body), **self.parameters)
+            body = custom_formatter.format(str(self.body), **self.parameters)
         except LookupError as e:
             logger.error(
                 u"Tautulli Newsletter :: Unable to parse parameter %s in newsletter body. Using fallback." % e)
-            body = unicode(self._DEFAULT_BODY).format(**self.parameters)
+            body = str(self._DEFAULT_BODY).format(**self.parameters)
         except Exception as e:
             logger.error(
                 u"Tautulli Newsletter :: Unable to parse custom newsletter body: %s. Using fallback." % e)
-            body = unicode(self._DEFAULT_BODY).format(**self.parameters)
+            body = str(self._DEFAULT_BODY).format(**self.parameters)
 
         try:
-            message = custom_formatter.format(unicode(self.message), **self.parameters)
+            message = custom_formatter.format(str(self.message), **self.parameters)
         except LookupError as e:
             logger.error(
                 u"Tautulli Newsletter :: Unable to parse parameter %s in newsletter message. Using fallback." % e)
-            message = unicode(self._DEFAULT_MESSAGE).format(**self.parameters)
+            message = str(self._DEFAULT_MESSAGE).format(**self.parameters)
         except Exception as e:
             logger.error(
                 u"Tautulli Newsletter :: Unable to parse custom newsletter message: %s. Using fallback." % e)
-            message = unicode(self._DEFAULT_MESSAGE).format(**self.parameters)
+            message = str(self._DEFAULT_MESSAGE).format(**self.parameters)
 
         return subject, body, message
 
     def build_filename(self):
-        from notification_handler import CustomFormatter
+        from plexpy.notification_handler import CustomFormatter
         custom_formatter = CustomFormatter()
 
         try:
-            filename = custom_formatter.format(unicode(self.filename), **self.parameters)
+            filename = custom_formatter.format(str(self.filename), **self.parameters)
         except LookupError as e:
             logger.error(
                 u"Tautulli Newsletter :: Unable to parse parameter %s in newsletter filename. Using fallback." % e)
-            filename = unicode(self._DEFAULT_FILENAME).format(**self.parameters)
+            filename = str(self._DEFAULT_FILENAME).format(**self.parameters)
         except Exception as e:
             logger.error(
                 u"Tautulli Newsletter :: Unable to parse custom newsletter subject: %s. Using fallback." % e)
-            filename = unicode(self._DEFAULT_FILENAME).format(**self.parameters)
+            filename = str(self._DEFAULT_FILENAME).format(**self.parameters)
 
         return filename
 
@@ -681,7 +679,7 @@ class RecentlyAdded(Newsletter):
     _TEMPLATE = 'recently_added.html'
 
     def _get_recently_added(self, media_type=None):
-        from notification_handler import format_group_index
+        from plexpy.notification_handler import format_group_index
 
         recently_added = []
         done = False
@@ -803,7 +801,7 @@ class RecentlyAdded(Newsletter):
         return recently_added
 
     def retrieve_data(self):
-        from notification_handler import get_img_info, set_hash_image_info
+        from plexpy.notification_handler import get_img_info, set_hash_image_info
 
         if not self.config['incl_libraries'] or not self.config['incl_servers']:
             logger.warn(u"Tautulli Newsletters :: Failed to retrieve %s newsletter data: no libraries selected." % self.NAME)

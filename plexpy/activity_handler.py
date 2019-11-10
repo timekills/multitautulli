@@ -21,13 +21,11 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.date import DateTrigger
 
 import plexpy
-import activity_processor
-import datafactory
-import helpers
-import logger
-import notification_handler
-import pmsconnect
-from servers import plexServer
+from plexpy import activity_processor
+from plexpy import datafactory
+from plexpy import helpers
+from plexpy import logger
+from plexpy import notification_handler
 
 ACTIVITY_SCHED = BackgroundScheduler()
 
@@ -208,10 +206,7 @@ class ActivityHandler(object):
 
     def on_buffer(self):
         if self.is_valid_session():
-            logger.debug(u"Tautulli ActivityHandler :: %s: Session %s is buffering."
-                         % (self.server.CONFIG.PMS_NAME, self.get_session_key()))
             ap = activity_processor.ActivityProcessor(server=self.server)
-            db_stream = ap.get_session_by_key(session_key=self.get_session_key())
 
             # Increment our buffer count
             ap.increment_session_buffer_count(session_key=self.get_session_key())
@@ -233,8 +228,8 @@ class ActivityHandler(object):
                              (self.server.CONFIG.PMS_NAME, self.get_session_key(), buffer_last_triggered))
                 time_since_last_trigger = int(time.time()) - int(buffer_last_triggered)
 
-            if current_buffer_count >= plexpy.CONFIG.BUFFER_THRESHOLD and time_since_last_trigger is None or \
-                    time_since_last_trigger >= plexpy.CONFIG.BUFFER_WAIT:
+            if (current_buffer_count >= plexpy.CONFIG.BUFFER_THRESHOLD and time_since_last_trigger is None) or \
+                    (time_since_last_trigger is not None and time_since_last_trigger >= plexpy.CONFIG.BUFFER_WAIT):
                 ap.set_session_buffer_trigger_time(session_key=self.get_session_key())
 
                 # Retrieve the session data from our temp table
@@ -269,6 +264,7 @@ class ActivityHandler(object):
                 last_live_uuid = db_session['live_uuid']
                 last_transcode_key = db_session['transcode_key'].split('/')[-1]
                 last_paused = db_session['last_paused']
+                buffer_count = db_session['buffer_count']
 
                 # Make sure the same item is being played
                 if this_rating_key == last_rating_key or this_live_uuid == last_live_uuid:
@@ -314,7 +310,6 @@ class ActivityHandler(object):
                                        'track': plexpy.CONFIG.MUSIC_WATCHED_PERCENT,
                                        'clip': plexpy.CONFIG.TV_WATCHED_PERCENT
                                        }
-
                     if progress_percent >= watched_percent.get(db_session['media_type'], 101):
                         logger.debug(u"Tautulli ActivityHandler :: %s: Session %s watched."
                                      % (self.server.CONFIG.PMS_NAME, str(self.get_session_key())))
@@ -379,7 +374,7 @@ class TimelineHandler(object):
             identifier = self.timeline.get('identifier')
             state_type = self.timeline.get('state')
             media_type = media_types.get(self.timeline.get('type'))
-            section_id = self.timeline.get('sectionID', 0)
+            section_id = int(self.timeline.get('sectionID', 0))
             title = self.timeline.get('title', 'Unknown')
             metadata_state = self.timeline.get('metadataState')
             media_state = self.timeline.get('mediaState')

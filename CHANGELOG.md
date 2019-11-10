@@ -1,5 +1,31 @@
 # Changelog
 
+## v4.0.00 (2019-11-01)
+* (NEW) Python 3 migration. Tested with Python 3.7.3 and 3.6.8.
+* (NEW) Remove site packages from lib.
+* (NEW) Upgrade all site packages to current releases.
+* (NEW) Implement the use of python VENV.
+* (NEW) Implement the use of pip-tools for maintaining site packages used by Tautulli.
+* (FIXED) Occasional failures to process XML responses.
+* (FIXED) Media filtering in History display.
+
+
+> **NOTE:** If migrating from any release prior to V4.0.00, I recommend a clean install.
+
+##### Changes to the installation instructions:
+* Install Python3:
+    * `sudo apt-get install python3 python3-venv python3-all-dev`
+* Linux Install:
+    * Type: `cd /opt`
+    * Type: `sudo git clone https://github.com/zSeriesGuy/Tautulli.git`
+    * Type: `cd Tautulli`
+    * Type: `git checkout V4.0.00`
+    * Type: `python3 -m venv /opt/Tautulli`
+    * Type: `source /opt/Tautulli/bin/activate`
+    * Type: `python3 -m pip install --upgrade pip setuptools pip-tools`
+    * Type: `pip3 install -r /opt/Tautulli/requirements.txt`
+    * If running as a daemon, update the startup command in /lib/systemd/system/tautulli.service to `ExecStart=/opt/Tautulli/bin/python3 /opt/Tautulli/Tautulli.py`
+
 ## v3.0.00-beta (2019-01-22)
 
 * Monitoring:

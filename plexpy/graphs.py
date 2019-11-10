@@ -17,10 +17,10 @@ import datetime
 from time import mktime
 
 import plexpy
-import common
-import database
-import logger
-import session
+from plexpy import common
+from plexpy import database
+from plexpy import logger
+from plexpy import session
 
 
 class Graphs(object):
@@ -632,7 +632,7 @@ class Graphs(object):
         for month_item in sorted(month_range):
             dt = datetime.datetime(*month_item[:6])
             date_string = dt.strftime('%Y-%m')
-            categories.append(dt.strftime('%b %Y').decode(plexpy.SYS_ENCODING, 'replace'))
+            categories.append(dt.strftime('%b %Y'))
 
         for item in result:
             offset = (datetime.datetime.strptime(item['datestring'], '%Y-%m').year * 12 + datetime.datetime.strptime(item['datestring'], '%Y-%m').month)\

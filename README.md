@@ -8,6 +8,8 @@ A python based web application for monitoring, analytics and notifications for [
 
 This project is based on code from [Headphones](https://github.com/rembo10/headphones) and [PlexWatchWeb](https://github.com/ecleese/plexWatchWeb).
 
+> **NOTE:** If migrating from any release prior to V4.0.00, I recommend a clean install of this code.
+
 ## Features
 
 * Responsive web design viewable on desktop, tablet and mobile web browsers.
@@ -23,6 +25,7 @@ This project is based on code from [Headphones](https://github.com/rembo10/headp
 * Rich analytics presented using Highcharts graphing.
 * Beautiful content information pages.
 * Full sync list data on all users syncing items from your library.
+* Support for multiple Plex Media Servers.
 * And many more!!
 
 ## Preview
@@ -32,6 +35,8 @@ This project is based on code from [Headphones](https://github.com/rembo10/headp
 ![Tautulli Homepage](https://tautulli.com/images/screenshots/activity-compressed.jpg?v=2)
 
 ## Installation and Support
+
+> **NOTE:** If migrating from any release prior to V4.0.00, I recommend a clean install.
 
 * Read the [Installation Guides](https://github.com/Tautulli/Tautulli-Wiki/wiki/Installation) for instructions to install Tautulli.
 * The [Frequently Asked Questions](https://github.com/Tautulli/Tautulli-Wiki/wiki/Frequently-Asked-Questions) in the wiki can help you with common problems.

@@ -18,14 +18,14 @@
 
 from functools import partial
 from multiprocessing.dummy import Pool as ThreadPool
-from urlparse import urljoin
+from urllib.parse import urljoin
 
 import certifi
 import urllib3
 
 import plexpy
-import helpers
-import logger
+from plexpy import helpers
+from plexpy import logger
 
 
 class HTTPHandler(object):
@@ -36,7 +36,7 @@ class HTTPHandler(object):
     def __init__(self, urls, headers=None, token=None, timeout=10, ssl_verify=True, silent=False):
         self._silent = silent
 
-        if isinstance(urls, basestring):
+        if isinstance(urls, str):
             self.urls = urls.split() or urls.split(',')
         else:
             self.urls = urls
@@ -78,7 +78,7 @@ class HTTPHandler(object):
         Output: list
         """
 
-        self.uri = uri.encode('utf-8')
+        self.uri = str(uri)
         self.request_type = request_type.upper()
         self.output_format = output_format.lower()
         self.return_type = return_type
@@ -164,7 +164,7 @@ class HTTPHandler(object):
             return self._http_format_output(response_content, response_headers)
         else:
             if not self._silent:
-                logger.warn(u"Failed to access uri endpoint %s. Status code %r" % (self.uri, response_status))
+                logger.warn(u"Failed to access uri endpoint %s. status code %r" % (self.uri, response_status))
             return None
 
     def _http_format_output(self, response_content, response_headers):

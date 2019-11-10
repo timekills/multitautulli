@@ -13,58 +13,52 @@
 #  You should have received a copy of the GNU General Public License
 #  along with Tautulli.  If not, see <http://www.gnu.org/licenses/>.
 
-import hashlib
 import json
 import os
 import shutil
 import threading
-import urllib
+import urllib.parse
+import datetime
 
 import cherrypy
 from cherrypy.lib.static import serve_file, serve_download
 from cherrypy._cperror import NotFound
 
-from hashing_passwords import make_hash
+from passlib.hash import pbkdf2_sha256
 from mako.lookup import TemplateLookup
 from mako import exceptions
 
 import websocket
 import arrow
+
 import plexpy
-import common
-import config
-from config import ServerConfig
-import database
-import datafactory
-import graphs
-import helpers
-import http_handler
-import libraries
-import log_reader
-import logger
-import newsletter_handler
-import newsletters
-import mobile_app
-import notification_handler
-import notifiers
-import plextv
-import plexivity_import
-import plexwatch_import
-import tautulli_import
-import pmsconnect
-import users
-import versioncheck
-import datetime
-import web_socket
+from plexpy import common
+from plexpy import config
+from plexpy import database
+from plexpy import datafactory
+from plexpy import graphs
+from plexpy import helpers
+from plexpy import libraries
+from plexpy import log_reader
+from plexpy import logger
+from plexpy import newsletter_handler
+from plexpy import newsletters
+from plexpy import mobile_app
+from plexpy import notification_handler
+from plexpy import notifiers
+from plexpy import plextv
+from plexpy import plexivity_import
+from plexpy import plexwatch_import
+from plexpy import tautulli_import
+from plexpy import users
+from plexpy import versioncheck
 from plexpy.api2 import API2
 from plexpy.helpers import checked, addtoapi, get_ip, create_https_certificates, build_datatables_json
 from plexpy.session import get_session_info, get_session_user_id, allow_session_user, allow_session_library
 from plexpy.webauth import AuthController, requireAuth, member_of
-import plexpy.servers
-from servers import plexServers, plexServer
-from plexpy import PLEXTV, PMS_SERVERS
-import activity_pinger
-import session
+from plexpy.servers import plexServers, plexServer
+from plexpy import activity_pinger
+from plexpy import session
 
 def serve_template(templatename, **kwargs):
     interface_dir = os.path.join(str(plexpy.PROG_DIR), 'data/interfaces/')
@@ -256,7 +250,7 @@ class WebInterface(object):
     @cherrypy.tools.json_out()
     @requireAuth(member_of("admin"))
     @addtoapi()
-    def terminate_session(self, server_id, session_key=None, session_id=None, message=None, **kwargs):
+    def terminate_session(self, server_id=None, session_key=None, session_id=None, message=None, **kwargs):
         """ Stop a streaming session.
 
             ```
@@ -271,13 +265,28 @@ class WebInterface(object):
                 None
             ```
         """
-        server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
-        result = server.PMSCONNECTION.terminate_session(session_key=session_key, session_id=session_id, message=message)
-
-        if result:
-            return {'result': 'success', 'message': 'Session terminated.'}
+        server = None
+        if server_id:
+            server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
         else:
-            return {'result': 'error', 'message': 'Failed to terminate session.'}
+            for server in plexpy.PMS_SERVERS:
+                activity = server.PMSCONNECTION.get_current_activity()
+                sessions = activity['sessions']
+                session = {'session_id': ''}
+                for session in sessions:
+                    if session_id and session_id == session['session_id']:
+                        if not session_key:
+                            session_key = session['session_key']
+                        break
+                if session_id and session_id == session['session_id']:
+                    break
+
+        if server and session_id:
+            result = server.PMSCONNECTION.terminate_session(session_key=session_key, session_id=session_id, message=message)
+            if result:
+                return {'result': 'success', 'message': 'Session terminated.'}
+
+        return {'result': 'error', 'message': 'Failed to terminate session.'}
 
     @cherrypy.expose
     @cherrypy.tools.json_out()
@@ -297,10 +306,10 @@ class WebInterface(object):
                 ep = ep.format(machine_id=server.CONFIG.PMS_IDENTIFIER)
             if (server_id and server_id.isdigit() and int(server_id) == server.CONFIG.ID) \
                     or (plextv == 'true' and '{machine_id}' not in endpoint):
-                xml_url.append(base_url + ep + '?' + urllib.urlencode(kwargs))
+                xml_url.append(base_url + ep + '?' + urllib.parse.urlencode(kwargs))
                 break
             elif not server_id or server_id == 'false':
-                xml_url.append(base_url + ep + '?' + urllib.urlencode(kwargs))
+                xml_url.append(base_url + ep + '?' + urllib.parse.urlencode(kwargs))
 
         return xml_url
 
@@ -2373,8 +2382,7 @@ class WebInterface(object):
     @requireAuth(member_of("admin"))
     def delete_sync_rows(self, client_id, sync_id, **kwargs):
         if client_id and sync_id:
-            plex_tv = plextv.PlexTV()
-            delete_row = plex_tv.delete_sync(client_id=client_id, sync_id=sync_id)
+            delete_row = plexpy.PLEXTV.delete_sync(client_id=client_id, sync_id=sync_id)
             return {'message': 'Sync deleted'}
         else:
             return {'message': 'no data received'}
@@ -2415,13 +2423,13 @@ class WebInterface(object):
                 try:
                     temp_loglevel_and_time = l.split(' - ', 1)
                     loglvl = temp_loglevel_and_time[1].split(' ::', 1)[0].strip()
-                    msg = helpers.sanitize(unicode(l.split(' : ', 1)[1].replace('\n', ''), 'utf-8'))
+                    msg = helpers.sanitize(str(l.split(' : ', 1)[1].replace('\n', '')))
                     fa([temp_loglevel_and_time[0], loglvl, msg])
                 except IndexError:
                     # Add traceback message to previous msg.
                     tl = (len(filt) - 1)
                     n = len(l) - len(l.lstrip(' '))
-                    ll = '&nbsp;' * (2 * n) + helpers.sanitize(unicode(l[n:], 'utf-8'))
+                    ll = '&nbsp;' * (2 * n) + helpers.sanitize(str(l[n:]))
                     filt[tl][2] += '<br>' + ll
                     continue
 
@@ -2889,13 +2897,13 @@ class WebInterface(object):
         if kwargs.get('http_password'):
             if kwargs['http_password'] == '    ' and plexpy.CONFIG.HTTP_PASSWORD != '':
                 if kwargs.get('http_hash_password') and not plexpy.CONFIG.HTTP_HASHED_PASSWORD:
-                    kwargs['http_password'] = make_hash(plexpy.CONFIG.HTTP_PASSWORD)
+                    kwargs['http_password'] = pbkdf2_sha256.hash(plexpy.CONFIG.HTTP_PASSWORD)
                     kwargs['http_hashed_password'] = 1
                 else:
                     kwargs['http_password'] = plexpy.CONFIG.HTTP_PASSWORD
 
             elif kwargs['http_password'] and kwargs.get('http_hash_password'):
-                kwargs['http_password'] = make_hash(kwargs['http_password'])
+                kwargs['http_password'] = pbkdf2_sha256.hash(kwargs['http_password'])
                 kwargs['http_hashed_password'] = 1
 
             elif not kwargs.get('http_hash_password'):
@@ -2943,21 +2951,21 @@ class WebInterface(object):
 
         # Remove config with 'hsec-' prefix and change home_sections to list
         if kwargs.get('home_sections'):
-            for k in kwargs.keys():
+            for k in list(kwargs.keys()):
                 if k.startswith('hsec-'):
                     del kwargs[k]
             kwargs['home_sections'] = kwargs['home_sections'].split(',')
 
         # Remove config with 'hscard-' prefix and change home_stats_cards to list
         if kwargs.get('home_stats_cards'):
-            for k in kwargs.keys():
+            for k in list(kwargs.keys()):
                 if k.startswith('hscard-'):
                     del kwargs[k]
             kwargs['home_stats_cards'] = kwargs['home_stats_cards'].split(',')
 
         # Remove config with 'hlcard-' prefix and change home_library_cards to list
         if kwargs.get('home_library_cards'):
-            for k in kwargs.keys():
+            for k in list(kwargs.keys()):
                 if k.startswith('hlcard-'):
                     del kwargs[k]
             kwargs['home_library_cards'] = kwargs['home_library_cards'].split(',')
@@ -3034,9 +3042,9 @@ class WebInterface(object):
     def get_servers_list(self, **kwargs):
         # Build Server List Configuration Settings
         server_list = []
-        for server in plexpy.PMS_SERVERS:
+        for server in sorted(plexpy.PMS_SERVERS, key=lambda server: server.CONFIG.PMS_NAME):
             server_list.append(server.get_config())
-        return sorted(server_list)
+        return server_list
 
     @cherrypy.expose
     @cherrypy.tools.json_out()
@@ -4893,8 +4901,7 @@ class WebInterface(object):
     def get_friends_list(self, **kwargs):
         """ Get the friends list of the server owner for Plex.tv. """
 
-        plex_tv = plextv.PlexTV()
-        result = plex_tv.get_plextv_friends('json')
+        result = plexpy.PLEXTV.get_plextv_friends('json')
 
         if result:
             return result
@@ -4907,8 +4914,7 @@ class WebInterface(object):
     def get_user_details(self, **kwargs):
         """ Get all details about a the server's owner from Plex.tv. """
 
-        plex_tv = plextv.PlexTV()
-        result = plex_tv.get_plextv_user_details('json')
+        result = plexpy.PLEXTV.get_plextv_user_details('json')
 
         if result:
             return result
@@ -5508,7 +5514,7 @@ class WebInterface(object):
             ```
         """
         geo_info = helpers.geoip_lookup(ip_address)
-        if isinstance(geo_info, basestring):
+        if isinstance(geo_info, str):
             return {'error': geo_info}
         return geo_info
 

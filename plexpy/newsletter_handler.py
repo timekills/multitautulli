@@ -21,9 +21,9 @@ from apscheduler.triggers.cron import CronTrigger
 import email.utils
 
 import plexpy
-import database
-import logger
-import newsletters
+from plexpy import database
+from plexpy import logger
+from plexpy import newsletters
 
 
 NEWSLETTER_SCHED = BackgroundScheduler()
@@ -56,6 +56,14 @@ def schedule_newsletters(newsletter_id=None):
 
 
 def schedule_newsletter_job(newsletter_job_id, name='', func=None, remove_job=False, args=None, cron=None):
+    # Adjust cron value day-of-week to Monday thru Sunday.
+    dow_table = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
+    if cron:
+        cron_dow = cron.split(" ")
+        if cron_dow[4].isdigit():
+            cron_dow[4] = dow_table[int(cron_dow[4])]
+            cron = ' '.join(cron_dow)
+
     if NEWSLETTER_SCHED.get_job(newsletter_job_id):
         if remove_job:
             NEWSLETTER_SCHED.remove_job(newsletter_job_id)

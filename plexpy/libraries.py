@@ -18,14 +18,14 @@ import os
 import threading
 
 import plexpy
-import common
-import database
-import datatables
-import helpers
-import logger
-import plextv
-import pmsconnect
-import session
+from plexpy import common
+from plexpy import database
+from plexpy import datatables
+from plexpy import helpers
+from plexpy import logger
+#import plextv
+from plexpy import pmsconnect
+from plexpy import session
 
 config_lock = threading.Lock()
 
@@ -222,7 +222,7 @@ def update_labels():
                                     % section_id)
 
     error_keys = set()
-    for rating_key, labels in key_mappings.iteritems():
+    for rating_key, labels in key_mappings.items():
         try:
             labels = ';'.join(labels)
             monitor_db.action('UPDATE session_history_metadata SET labels = ? '
@@ -577,7 +577,7 @@ class Libraries(object):
         if search_value:
             searchable_columns = [d['data'] for d in json_data['columns'] if d['searchable']]
             for row in rows:
-                for k,v in row.iteritems():
+                for k,v in row.items():
                     if k in searchable_columns and search_value in v.lower():
                         results.append(row)
                         break

@@ -15,16 +15,16 @@
 
 import time
 import requests
-import socket
+#import socket
 
 import plexpy
-import activity_processor
-import database
-import helpers
-import libraries
-import logger
-import notification_handler
-from .config import bool_int
+from plexpy import activity_processor
+from plexpy import database
+from plexpy import helpers
+from plexpy import libraries
+from plexpy import logger
+from plexpy import notification_handler
+from plexpy.config import bool_int
 
 
 def check_active_sessions(server=None, ws_request=False):

@@ -27,7 +27,7 @@ DOCUMENTATION :: END
 </%doc>
 
 % if data != None:
-% if data['children_count'] > 0:
+% if int(data['children_count']) > 0:
 <div class="item-children-wrapper">
     <ul class="item-children-instance list-unstyled">
         % for child in data['children_list']:

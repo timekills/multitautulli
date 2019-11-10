@@ -15,9 +15,9 @@
 
 import re
 
-import database
-import helpers
-import logger
+from plexpy import database
+from plexpy import helpers
+from plexpy import logger
 
 
 class DataTables(object):
@@ -107,7 +107,7 @@ class DataTables(object):
         result = filtered[parameters['start']:(parameters['start'] + parameters['length'])]
 
         # Sanitize on the way out
-        result = [{k: helpers.sanitize(v) if isinstance(v, basestring) else v for k, v in row.iteritems()}
+        result = [{k: helpers.sanitize(v) if isinstance(v, str) else v for k, v in row.items()}
                   for row in result]
 
         output = {'result': result,

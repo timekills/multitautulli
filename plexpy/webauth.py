@@ -19,15 +19,15 @@
 # Session tool to be loaded.
 
 from datetime import datetime, timedelta
-from urllib import quote, unquote
+from urllib.parse import quote, unquote
 
 import cherrypy
-from hashing_passwords import check_hash
+from passlib.hash import pbkdf2_sha256
 import jwt
 import threading
 
 import plexpy
-import logger
+from plexpy import logger
 from plexpy.database import MonitorDatabase
 from plexpy.users import Users, refresh_users
 from plexpy.plextv import PlexTV
@@ -135,7 +135,7 @@ def check_credentials(username=None, password=None, token=None, admin_login='0',
             user_details = {'user_id': None, 'username': username, 'access_level': 9}
 
             if plexpy.CONFIG.HTTP_HASHED_PASSWORD and \
-                    username == plexpy.CONFIG.HTTP_USERNAME and check_hash(password, plexpy.CONFIG.HTTP_PASSWORD):
+                    username == plexpy.CONFIG.HTTP_USERNAME and pbkdf2_sha256.verify(password, plexpy.CONFIG.HTTP_PASSWORD):
                 return True, user_details, 'admin'
             elif not plexpy.CONFIG.HTTP_HASHED_PASSWORD and \
                     username == plexpy.CONFIG.HTTP_USERNAME and password == plexpy.CONFIG.HTTP_PASSWORD:
@@ -335,7 +335,7 @@ class AuthController(object):
                 'exp': expiry
             }
 
-            jwt_token = jwt.encode(payload, plexpy.CONFIG.JWT_SECRET, algorithm=JWT_ALGORITHM)
+            jwt_token = jwt.encode(payload, plexpy.CONFIG.JWT_SECRET, algorithm=JWT_ALGORITHM).decode('utf-8')
 
             self.on_login(username=user_details['username'],
                           user_id=user_details['user_id'],
@@ -350,7 +350,7 @@ class AuthController(object):
 
             cherrypy.request.login = payload
             cherrypy.response.status = 200
-            return {'status': 'success', 'token': jwt_token.decode('utf-8'), 'uuid': plexpy.CONFIG.PMS_UUID}
+            return {'status': 'success', 'token': jwt_token, 'uuid': plexpy.CONFIG.PMS_UUID}
 
         elif admin_login == '1' and username:
             self.on_login(username=username)

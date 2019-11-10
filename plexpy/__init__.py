@@ -14,7 +14,7 @@
 #  along with Tautulli.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
-from Queue import Queue
+from queue import Queue
 import sqlite3
 import sys
 import subprocess
@@ -22,7 +22,6 @@ import threading
 import datetime
 import uuid
 import json
-
 # Some cut down versions of Python may not include this module and it's not critical for us
 try:
     import webbrowser
@@ -33,27 +32,23 @@ except ImportError:
 import cherrypy
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
-from UniversalAnalytics import Tracker
+#from UniversalAnalytics import Tracker
 
-import activity_handler
-import activity_pinger
-import common
-import database
-import datafactory
-import libraries
-import logger
-import mobile_app
-import newsletters
-import newsletter_handler
-import notification_handler
-import notifiers
-import plextv
-import users
-import versioncheck
-import web_socket
-import plexpy.config
+from plexpy import activity_handler
+from plexpy import common
+from plexpy import database
+from plexpy import datafactory
+from plexpy import libraries
+from plexpy import logger
+from plexpy import mobile_app
+from plexpy import newsletters
+from plexpy import newsletter_handler
+from plexpy import notification_handler
+from plexpy import notifiers
+from plexpy import versioncheck
+from plexpy.config import Config
 from plexpy.servers import plexServer, plexServers
-from plextv import PlexTV
+from plexpy.plextv import PlexTV
 
 PROG_DIR = None
 FULL_PATH = None
@@ -131,7 +126,7 @@ def initialize(config_file):
         global UMASK
         global _UPDATE
 
-        CONFIG = plexpy.config.Config(config_file)
+        CONFIG = Config(config_file)
         CONFIG_FILE = config_file
 
         assert CONFIG is not None
@@ -140,8 +135,7 @@ def initialize(config_file):
             return False
 
         if CONFIG.HTTP_PORT < 21 or CONFIG.HTTP_PORT > 65535:
-            plexpy.logger.warn(
-                u"HTTP_PORT out of bounds: 21 < %s < 65535", CONFIG.HTTP_PORT)
+            logger.warn(u"HTTP_PORT out of bounds: 21 < %s < 65535", CONFIG.HTTP_PORT)
             CONFIG.HTTP_PORT = 8181
 
         if not CONFIG.HTTPS_CERT:
@@ -166,7 +160,7 @@ def initialize(config_file):
             ' - {}'.format(common.PLATFORM_LINUX_DISTRO) if common.PLATFORM_LINUX_DISTRO else ''
         ))
         logger.info(u"{} (UTC{})".format(
-            plexpy.SYS_TIMEZONE, plexpy.SYS_UTC_OFFSET
+            SYS_TIMEZONE, SYS_UTC_OFFSET
         ))
         logger.info(u"Python {}".format(
             sys.version
@@ -330,7 +324,7 @@ def daemonize():
     except OSError as e:
         raise RuntimeError("2nd fork failed: %s [%d]", e.strerror, e.errno)
 
-    dev_null = file('/dev/null', 'r')
+    dev_null = open('/dev/null', 'r')
     os.dup2(dev_null.fileno(), sys.stdin.fileno())
 
     si = open('/dev/null', "r")
@@ -346,7 +340,7 @@ def daemonize():
 
     if CREATEPID:
         logger.info(u"Writing PID %d to %s", pid, PIDFILE)
-        with file(PIDFILE, 'w') as fp:
+        with open(PIDFILE, 'w') as fp:
             fp.write("%s\n" % pid)
 
 
@@ -367,48 +361,49 @@ def launch_browser(host, port, root):
 
 
 def win_system_tray():
-    from systray import SysTrayIcon
+    from infi.systray import SysTrayIcon
 
     def tray_open(sysTrayIcon):
-        launch_browser(plexpy.CONFIG.HTTP_HOST, plexpy.HTTP_PORT, plexpy.HTTP_ROOT)
+        launch_browser(CONFIG.HTTP_HOST, HTTP_PORT, HTTP_ROOT)
 
     def tray_check_update(sysTrayIcon):
         versioncheck.check_update()
 
     def tray_update(sysTrayIcon):
-        if plexpy.UPDATE_AVAILABLE:
-            plexpy.SIGNAL = 'update'
+        if UPDATE_AVAILABLE:
+            SIGNAL = 'update'
         else:
             hover_text = common.PRODUCT + ' - No Update Available'
-            plexpy.WIN_SYS_TRAY_ICON.update(hover_text=hover_text)
+            WIN_SYS_TRAY_ICON.update(hover_text=hover_text)
 
     def tray_restart(sysTrayIcon):
-        plexpy.SIGNAL = 'restart'
+        SIGNAL = 'restart'
 
     def tray_quit(sysTrayIcon):
-        plexpy.SIGNAL = 'shutdown'
+        SIGNAL = 'shutdown'
 
-    if plexpy.UPDATE_AVAILABLE:
-        icon = os.path.join(plexpy.PROG_DIR, 'data/interfaces/', plexpy.CONFIG.INTERFACE, 'images/logo_tray-update.ico')
+    if UPDATE_AVAILABLE:
+        icon = os.path.join(PROG_DIR, 'data/interfaces/', CONFIG.INTERFACE, 'images/logo_tray-update.ico')
         hover_text = common.PRODUCT + ' - Update Available!'
     else:
-        icon = os.path.join(plexpy.PROG_DIR, 'data/interfaces/', plexpy.CONFIG.INTERFACE, 'images/logo_tray.ico')
+        icon = os.path.join(PROG_DIR, 'data/interfaces/', CONFIG.INTERFACE, 'images/logo_tray.ico')
         hover_text = common.PRODUCT
 
-    menu_options = (('Open Tautulli', None, tray_open, 'default'),
-                    ('', None, 'separator', None),
-                    ('Check for Updates', None, tray_check_update, None),
-                    ('Update', None, tray_update, None),
-                    ('Restart', None, tray_restart, None))
+    menu_options = (
+                    ('Open Tautulli', None, tray_open),
+                    ('Check for Updates', None, tray_check_update),
+                    ('Update', None, tray_update),
+                    ('Restart', None, tray_restart),
+    )
 
     logger.info(u"Launching system tray icon.")
 
     try:
-        plexpy.WIN_SYS_TRAY_ICON = SysTrayIcon(icon, hover_text, menu_options, on_quit=tray_quit)
-        plexpy.WIN_SYS_TRAY_ICON.start()
+        WIN_SYS_TRAY_ICON = SysTrayIcon(icon, hover_text, menu_options, on_quit=tray_quit, default_menu_index=1)
+        WIN_SYS_TRAY_ICON.start()
     except Exception as e:
         logger.error(u"Unable to launch system tray icon: %s." % e)
-        plexpy.WIN_SYS_TRAY_ICON = None
+        WIN_SYS_TRAY_ICON = None
 
 
 def initialize_scheduler():
@@ -497,31 +492,31 @@ def start():
         notifiers.check_browser_enabled()
 
         # Initialize the list of plexServers and Start the monitoring threads
-        if plexpy.CONFIG.PMS_TOKEN:
+        if CONFIG.PMS_TOKEN:
             PLEXTV = PlexTV()
             PMS_SERVERS = plexServers()
             PMS_SERVERS.start()
 
+        # TODO: JLN - Handle this
         # Initialize System Analytics
-        if CONFIG.SYSTEM_ANALYTICS:
-            global TRACKER
-            TRACKER = initialize_tracker()
-
-            # Send system analytics events
-            if not CONFIG.FIRST_RUN_COMPLETE:
-                analytics_event(category='system', action='install')
-
-            elif _UPDATE:
-                analytics_event(category='system', action='update')
-
-            analytics_event(category='system', action='start')
-
+        # if CONFIG.SYSTEM_ANALYTICS:
+        #     global TRACKER
+        #     TRACKER = initialize_tracker()
+        #
+        #     # Send system analytics events
+        #     if not CONFIG.FIRST_RUN_COMPLETE:
+        #         analytics_event(category='system', action='install')
+        #
+        #     elif _UPDATE:
+        #         analytics_event(category='system', action='update')
+        #
+        #     analytics_event(category='system', action='start')
+        #
         # Schedule newsletters
         newsletter_handler.NEWSLETTER_SCHED.start()
         newsletter_handler.schedule_newsletters()
-
+        #
         _STARTED = True
-
 
 def sig_handler(signum=None, frame=None):
     if signum is not None:
@@ -1874,7 +1869,7 @@ def dbcheck():
 
             logger.debug(u"Multi-Server Migration - Inserting configured server into servers table.")
             from configobj import ConfigObj
-            config = ConfigObj(plexpy.CONFIG_FILE, encoding='utf-8')
+            config = ConfigObj(CONFIG_FILE, encoding='utf-8')
 
             c_db.execute(
                 'INSERT INTO servers (pms_name, pms_ip, pms_port, '
@@ -2120,17 +2115,17 @@ def dbcheck():
             )
 
             logger.debug(u"Multi-Server Migration - Clearing Cache.")
-            [os.remove(os.path.join(plexpy.CONFIG.CACHE_DIR, f)) for f in os.listdir(plexpy.CONFIG.CACHE_DIR)
+            [os.remove(os.path.join(CONFIG.CACHE_DIR, f)) for f in os.listdir(CONFIG.CACHE_DIR)
              if f.endswith('.json')]
             for d in ['/images/', '/session_metadata/']:
-                if os.path.exists(plexpy.CONFIG.CACHE_DIR + d):
-                    [os.remove(os.path.join(plexpy.CONFIG.CACHE_DIR + d, f))
-                        for f in os.listdir(plexpy.CONFIG.CACHE_DIR + d)]
+                if os.path.exists(CONFIG.CACHE_DIR + d):
+                    [os.remove(os.path.join(CONFIG.CACHE_DIR + d, f))
+                        for f in os.listdir(CONFIG.CACHE_DIR + d)]
 
 
             logger.debug(u"Multi-Server Migration - Updating CONFIG Settings.")
             library_keys = []
-            for section_id in plexpy.CONFIG.HOME_LIBRARY_CARDS:
+            for section_id in CONFIG.HOME_LIBRARY_CARDS:
                 result = c_db.execute(
                     'SELECT id FROM library_sections WHERE section_id = ?',
                     [int(section_id)]
@@ -2163,7 +2158,7 @@ def dbcheck():
             del config['Monitoring']['refresh_libraries_on_startup']
             del config['Monitoring']['refresh_libraries_interval']
             config.write()
-            plexpy.CONFIG.reload()
+            CONFIG.reload()
 
             logger.debug(u"Multi-Server Migration - Database Modifications completed successfully.")
 
@@ -2282,45 +2277,45 @@ def shutdown(restart=False, update=False, checkout=False):
 def generate_uuid():
     return uuid.uuid4().hex
 
-
-def initialize_tracker():
-    data = {
-        'dataSource': 'server',
-        'appName': common.PRODUCT,
-        'appVersion': common.RELEASE,
-        'appId': plexpy.INSTALL_TYPE,
-        'appInstallerId': plexpy.CONFIG.GIT_BRANCH,
-        'dimension1': '{} {}'.format(common.PLATFORM, common.PLATFORM_RELEASE),  # App Platform
-        'dimension2': common.PLATFORM_LINUX_DISTRO,  # Linux Distro
-        'userLanguage': plexpy.SYS_LANGUAGE,
-        'documentEncoding': plexpy.SYS_ENCODING,
-        'noninteractive': True
-        }
-
-    tracker = Tracker.create('UA-111522699-2', client_id=CONFIG.PMS_UUID, hash_client_id=True,
-                             user_agent=common.USER_AGENT)
-    tracker.set(data)
-
-    return tracker
-
-
-def analytics_event(category, action, label=None, value=None, **kwargs):
-    data = {'category': category, 'action': action}
-
-    if label is not None:
-        data['label'] = label
-
-    if value is not None:
-        data['value'] = value
-
-    if kwargs:
-        data.update(kwargs)
-
-    if TRACKER:
-        try:
-            TRACKER.send('event', data)
-        except Exception as e:
-            logger.warn(u"Failed to send analytics event for category '%s', action '%s': %s" % (category, action, e))
+#
+# def initialize_tracker():
+#     data = {
+#         'dataSource': 'server',
+#         'appName': common.PRODUCT,
+#         'appVersion': common.RELEASE,
+#         'appId': plexpy.INSTALL_TYPE,
+#         'appInstallerId': plexpy.CONFIG.GIT_BRANCH,
+#         'dimension1': '{} {}'.format(common.PLATFORM, common.PLATFORM_RELEASE),  # App Platform
+#         'dimension2': common.PLATFORM_LINUX_DISTRO,  # Linux Distro
+#         'userLanguage': plexpy.SYS_LANGUAGE,
+#         'documentEncoding': plexpy.SYS_ENCODING,
+#         'noninteractive': True
+#         }
+#
+#     tracker = Tracker.create('UA-111522699-2', client_id=CONFIG.PMS_UUID, hash_client_id=True,
+#                              user_agent=common.USER_AGENT)
+#     tracker.set(data)
+#
+#     return tracker
+#
+#
+# def analytics_event(category, action, label=None, value=None, **kwargs):
+#     data = {'category': category, 'action': action}
+#
+#     if label is not None:
+#         data['label'] = label
+#
+#     if value is not None:
+#         data['value'] = value
+#
+#     if kwargs:
+#         data.update(kwargs)
+#
+#     if TRACKER:
+#         try:
+#             TRACKER.send('event', data)
+#         except Exception as e:
+#             logger.warn(u"Failed to send analytics event for category '%s', action '%s': %s" % (category, action, e))
 
 
 def check_folder_writable(folder, fallback, name):

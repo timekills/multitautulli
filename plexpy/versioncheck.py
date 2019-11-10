@@ -14,15 +14,16 @@
 #  along with Tautulli.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
+import sys
 import platform
 import re
 import subprocess
 import tarfile
 
 import plexpy
-import common
-import logger
-import request
+from plexpy import common
+from plexpy import logger
+from plexpy import request
 
 
 def runGit(args):
@@ -44,17 +45,19 @@ def runGit(args):
             logger.debug('Trying to execute: "' + cmd + '" with shell in ' + plexpy.PROG_DIR)
             p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True, cwd=plexpy.PROG_DIR)
             output, err = p.communicate()
-            output = output.strip()
+            output = output.decode('utf-8').strip()
+            for line in output.split('\n'):
+                if line:
+                    logger.debug('Git output: ' + line)
 
-            logger.debug('Git output: ' + output)
         except OSError:
             logger.debug('Command failed: %s', cmd)
             continue
 
-        if 'not found' in output or "not recognized as an internal or external command" in output:
+        if "not found" in output or "not recognized as an internal or external command" in output:
             logger.debug('Unable to find git with command ' + cmd)
             output = None
-        elif 'fatal:' in output or err:
+        elif "fatal:" in output or err:
             logger.error('Git returned bad info. Are you sure this is a git installation?')
             output = None
         elif output:
@@ -80,7 +83,7 @@ def getVersion():
             logger.error('Could not find latest installed version.')
             cur_commit_hash = None
 
-        cur_commit_hash = str(output)
+        cur_commit_hash = output
 
         if not re.match('^[a-z0-9]+$', cur_commit_hash):
             logger.error('Output does not look like a hash, not using it.')
@@ -207,7 +210,7 @@ def check_github(auto_update=False, notify=False):
         url = 'https://api.github.com/repos/%s/%s/releases' % (plexpy.CONFIG.GIT_USER, plexpy.CONFIG.GIT_REPO)
         releases = request.request_json(url, timeout=20, whitelist_status_code=404, validator=lambda x: type(x) == list)
 
-        if releases is None:
+        if releases is None or len(releases) == 0:
             logger.warn('Could not get releases from GitHub.')
             return plexpy.LATEST_VERSION
 
@@ -243,6 +246,19 @@ def update():
         logger.info('Windows .exe updating not supported yet.')
 
     elif plexpy.INSTALL_TYPE == 'git':
+
+        output, err = runGit('diff --name-only %s/%s' % (plexpy.CONFIG.GIT_REMOTE, plexpy.CONFIG.GIT_BRANCH))
+
+        if output == '':
+            logger.debug("No differences found from the origin")
+
+        elif output == 'requirements.txt':
+            logger.warn('Requirements file is out of sync. Restoring to original.')
+            output, err = runGit('checkout %s/%s requirements.txt' % (plexpy.CONFIG.GIT_REMOTE, plexpy.CONFIG.GIT_BRANCH))
+        else:
+            logger.error("Differences Found. Unable to update.")
+            return False
+
         output, err = runGit('pull ' + plexpy.CONFIG.GIT_REMOTE + ' ' + plexpy.CONFIG.GIT_BRANCH)
 
         if not output:
@@ -250,13 +266,12 @@ def update():
             return
 
         for line in output.split('\n'):
-
             if 'Already up-to-date.' in line:
                 logger.info('No update available, not updating')
-                logger.info('Output: ' + str(output))
+                logger.info('Output: ' + output)
             elif line.endswith(('Aborting', 'Aborting.')):
                 logger.error('Unable to update from git: ' + line)
-                logger.info('Output: ' + str(output))
+                logger.info('Output: ' + output)
 
     else:
         tar_download_url = 'https://github.com/{}/{}/tarball/{}'.format(plexpy.CONFIG.GIT_USER, plexpy.CONFIG.GIT_REPO, plexpy.CONFIG.GIT_BRANCH)
@@ -316,11 +331,16 @@ def update():
             )
             return
 
+    output, err = pip_sync()
+    logger.info("Tautulli Update Complete")
+    return True
+
 
 def checkout_git_branch():
     if plexpy.INSTALL_TYPE == 'git':
         output, err = runGit('fetch %s' % plexpy.CONFIG.GIT_REMOTE)
         output, err = runGit('checkout %s' % plexpy.CONFIG.GIT_BRANCH)
+        output = output.decode('utf-8').strip()
 
         if not output:
             logger.error('Unable to change git branch.')
@@ -329,9 +349,10 @@ def checkout_git_branch():
         for line in output.split('\n'):
             if line.endswith(('Aborting', 'Aborting.')):
                 logger.error('Unable to checkout from git: ' + line)
-                logger.info('Output: ' + str(output))
+                logger.info('Output: ' + output)
 
         output, err = runGit('pull %s %s' % (plexpy.CONFIG.GIT_REMOTE, plexpy.CONFIG.GIT_BRANCH))
+        output, err = pip_sync()
 
 
 def read_changelog(latest_only=False, since_prev_release=False):
@@ -376,16 +397,16 @@ def read_changelog(latest_only=False, since_prev_release=False):
                     line_text = line_list_match.group(2)
 
                     if line_level > prev_level:
-                        output[-1] += '<ul>' * (line_level - prev_level) + '<li>' + line_text + '</li>'
+                        output[-1] += '<ul>' * int((line_level - prev_level)) + '<li>' + line_text + '</li>'
                     elif line_level < prev_level:
-                        output[-1] += '</ul>' * (prev_level - line_level) + '<li>' + line_text + '</li>'
+                        output[-1] += '</ul>' * int((prev_level - line_level)) + '<li>' + line_text + '</li>'
                     else:
                         output[-1] += '<li>' + line_text + '</li>'
 
                     prev_level = line_level
 
                 elif line.strip() == '' and prev_level:
-                    output[-1] += '</ul>' * (prev_level)
+                    output[-1] += '</ul>' * int(prev_level)
                     output.append('')
                     prev_level = 0
 
@@ -397,3 +418,24 @@ def read_changelog(latest_only=False, since_prev_release=False):
     except IOError as e:
         logger.error('Tautulli Version Checker :: Unable to open changelog file. %s' % e)
         return '<h4>Unable to open changelog file</h4>'
+
+
+def pip_sync():
+    logger.info("Running pip-sync to synchronize the environment.")
+    cmd = sys.executable + ' -m piptools sync requirements.txt'
+    try:
+        logger.debug('Trying to execute: "' + cmd + '" with shell in ' + plexpy.PROG_DIR)
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True,
+                             cwd=plexpy.PROG_DIR)
+        output, err = p.communicate()
+        output = output.decode('utf-8').strip()
+
+        for line in output.split('\n'):
+            if line:
+                logger.debug('pip-sync output: ' + line)
+
+    except Exception as e:
+        logger.error('Command failed: %s' % e)
+        return None, None
+
+    return (output, err)

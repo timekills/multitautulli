@@ -18,12 +18,11 @@ import json
 import time
 
 import plexpy
-import database
-import helpers
-import libraries
-import logger
-import pmsconnect
-import users
+from plexpy import database
+from plexpy import helpers
+from plexpy import libraries
+from plexpy import logger
+from plexpy import users
 
 
 class ActivityProcessor(object):
@@ -193,9 +192,9 @@ class ActivityProcessor(object):
                 return session['id']
 
             if str(session['paused_counter']).isdigit():
-                real_play_time = stopped - session['started'] - int(session['paused_counter'])
+                real_play_time = stopped - int(session['started']) - int(session['paused_counter'])
             else:
-                real_play_time = stopped - session['started']
+                real_play_time = stopped - int(session['started'])
 
             if not is_import and plexpy.CONFIG.LOGGING_IGNORE_INTERVAL:
                 if (session['media_type'] == 'movie' or session['media_type'] == 'episode') and \
@@ -206,7 +205,7 @@ class ActivityProcessor(object):
                                  (server_name, session['session_key'], session['rating_key'], str(real_play_time),
                                   plexpy.CONFIG.LOGGING_IGNORE_INTERVAL))
             if not is_import and session['media_type'] == 'track':
-                if real_play_time < 15 and session['duration'] >= 30:
+                if real_play_time < 15 and int(session['duration']) >= 30:
                     logging_enabled = False
                     logger.debug(u"Tautulli ActivityProcessor :: %s: Play duration for session %s ratingKey %s is %s secs, "
                                  u"looks like it was skipped so we're not logging it" %
@@ -496,7 +495,7 @@ class ActivityProcessor(object):
             if state:
                 values['state'] = state
 
-            for k, v in kwargs.iteritems():
+            for k, v in kwargs.items():
                 values[k] = v
 
             keys = {'session_key': session_key}

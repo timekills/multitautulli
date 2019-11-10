@@ -13,36 +13,24 @@
 #  You should have received a copy of the GNU General Public License
 #  along with Tautulli.  If not, see <http://www.gnu.org/licenses/>.
 
-import os
-from Queue import Queue
-import sqlite3
-import sys
-import subprocess
 import websocket
 import threading
 from threading import Event, Thread
-import datetime
-import uuid
-from plextv import PlexTV
-
 from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.interval import IntervalTrigger
 
-import helpers
-import json
-import http_handler
 import plexpy
-import activity_handler
-import activity_processor
-import activity_pinger
-import database
-import logger
-from config import bool_int, ServerConfig
-from web_socket import ServerWebSocket
-from pmsconnect import PmsConnect
-import libraries
-import users
-import session
+from plexpy import helpers
+from plexpy import activity_handler
+from plexpy import activity_processor
+from plexpy import activity_pinger
+from plexpy import database
+from plexpy import logger
+from plexpy.config import bool_int, ServerConfig
+from plexpy.web_socket import ServerWebSocket
+from plexpy.pmsconnect import PmsConnect
+from plexpy import libraries
+from plexpy import users
+from plexpy import session
 
 
 class plexServers(object):
@@ -82,7 +70,7 @@ class plexServers(object):
 
         for (server_name, server) in self.__dict__.items():
             if isinstance(server, plexServer) and server.CONFIG.PMS_IS_ENABLED and not server.CONFIG.PMS_IS_DELETED:
-                server.start()
+                threading.Thread(target=server.start).start()
 
     def stop(self):
         if self.SCHED.running:
