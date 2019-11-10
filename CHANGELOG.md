@@ -1,5 +1,9 @@
 # Changelog
 
+## v4.0.02 (2019-11-10)
+* (FIXED) LIST issue during database migration from pre-V3.0.00 format.
+* (FIXED) Error in database exception handling.
+
 ## v4.0.01 (2019-11-10)
 * (FIXED) Ensure list args passed to sqlite are type LIST.
 

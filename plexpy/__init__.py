@@ -1976,10 +1976,10 @@ def dbcheck():
                             shared_libraries.append(str(lib_id))
                     value_dict['shared_libraries'] = ";".join(shared_libraries)
                 insert_query = (
-                    "INSERT INTO user_shared_libraries (" + ", ".join(value_dict.keys() + key_dict.keys()) + ")" +
-                    " VALUES (" + ", ".join(["?"] * len(value_dict.keys() + key_dict.keys())) + ")"
+                    "INSERT INTO user_shared_libraries (" + ", ".join(list(value_dict.keys()) + list(key_dict.keys())) + ")" +
+                    " VALUES (" + ", ".join(["?"] * len(list(value_dict.keys()) + list(key_dict.keys()))) + ")"
                 )
-                c_db.execute(insert_query, value_dict.values() + key_dict.values())
+                c_db.execute(insert_query, list(value_dict.values()) + list(key_dict.values()))
 
             logger.debug(u"Multi-Server Migration - Migrating users table.")
             c_db.execute(
