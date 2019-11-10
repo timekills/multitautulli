@@ -1,5 +1,8 @@
 # Changelog
 
+## v4.0.01 (2019-11-10)
+* (FIXED) Ensure list args passed to sqlite are type LIST.
+
 ## v4.0.00 (2019-11-01)
 * (NEW) Python 3 migration. Tested with Python 3.7.3 and 3.6.8.
 * (NEW) Remove site packages from lib.
