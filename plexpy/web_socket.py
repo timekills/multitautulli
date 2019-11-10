@@ -100,7 +100,7 @@ class ServerWebSocket(object):
             logger.info(u"Tautulli WebSocket :: %s: Ready" % self.server.CONFIG.PMS_NAME)
             self.server.WS_CONNECTED = True
         except (websocket.WebSocketException, IOError, Exception) as e:
-            logger.error(u"Tautulli WebSocket :: %s: %s." % (self.server.CONFIG.PMS_NAME, e))
+            logger.error("Tautulli WebSocket :: %s: %s." % (self.server.CONFIG.PMS_NAME, e))
 
         if self.server.WS_CONNECTED:
             self.on_connect()
@@ -147,7 +147,7 @@ class ServerWebSocket(object):
                         logger.info(u"Tautulli WebSocket :: %s: Ready" % self.server.CONFIG.PMS_NAME)
                         self.server.WS_CONNECTED = True
                     except (websocket.WebSocketException, IOError, Exception) as e:
-                        logger.error(u"Tautulli WebSocket :: %s: %s." % (self.server.CONFIG.PMS_NAME, e))
+                        logger.error("Tautulli WebSocket :: %s: %s." % (self.server.CONFIG.PMS_NAME, e))
 
                 else:
                     self.close()
