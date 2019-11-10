@@ -142,7 +142,7 @@ class MonitorDatabase(object):
                         if args is None:
                             sql_result = c.execute(query)
                         else:
-                            sql_result = c.execute(query, args)
+                            sql_result = c.execute(query, list(args))
                     # Our transaction was successful, leave the loop
                     break
 

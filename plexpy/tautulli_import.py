@@ -45,7 +45,7 @@ def validate_database(database=None):
         connection.execute('SELECT id from servers')
         connection.close()
     except sqlite3.OperationalError as e:
-        if e.message == 'no such table: servers':
+        if str(e) == 'no such table: servers':
             logger.error(u"Tautulli Importer :: This database is not a V3.0.00 or higher database.")
             return 'This database is not a V3.0.00 or higher database.'
         else:
@@ -85,7 +85,7 @@ def import_from_tautulli(import_database=None, import_ignore_interval=0):
                 server['pms_is_enabled'] = 0
                 query = (
                     "INSERT INTO servers (" + ", ".join(server.keys()) + ")" +
-                    " VALUES (" + ", ".join(["?"] * len(server.keys())) + ")"
+                    " VALUES (" + ",".join(["?"] * len(server.keys())) + ")"
                 )
                 monitor_db.action(query, server.values())
                 new_server_id = monitor_db.last_insert_id()
@@ -129,7 +129,7 @@ def import_session_history(import_db, monitor_db, old_server_id, new_server_id, 
             old_session_history_id = session_history.pop('id')
             query = 'select sum(stopped - started) as play_time from session_history WHERE reference_id = %s' % old_session_history_id
             result = import_db.execute(query).fetchone()
-            if result['play_time'] >= import_ignore_interval:
+            if result['play_time'] and result['play_time'] >= import_ignore_interval:
                 session_history['server_id'] = new_server_id
                 key_dict = {}
                 key_dict['started'] = session_history.pop('started')
@@ -175,7 +175,7 @@ def import_session_history_media_info(import_db, monitor_db, old_server_id, new_
                     "INSERT INTO session_history_media_info (" + ", ".join(session_history_media_info.keys()) + ")" +
                     " VALUES (" + ", ".join(["?"] * len(session_history_media_info.keys())) + ")"
                 )
-                monitor_db.action(query, session_history_media_info.values())
+                monitor_db.action(query, list(session_history_media_info.values()))
 
         logger.info(u"Tautulli Importer :: session_history_media_info imported.")
 
@@ -201,7 +201,7 @@ def import_session_history_metadata(import_db, monitor_db, old_server_id, new_se
                     "INSERT INTO session_history_metadata (" + ", ".join(session_history_metadata.keys()) + ")" +
                     " VALUES (" + ", ".join(["?"] * len(session_history_metadata.keys())) + ")"
                 )
-                monitor_db.action(query, session_history_metadata.values())
+                monitor_db.action(query, list(session_history_metadata.values()))
 
         logger.info(u"Tautulli Importer :: session_history_metadata imported.")
 
@@ -411,7 +411,7 @@ def import_notify_log(import_db, monitor_db, old_notifier_id, new_notifier_id):
                     "INSERT INTO notify_log (" + ", ".join(notify_log.keys()) + ")" +
                     " VALUES (" + ", ".join(["?"] * len(notify_log.keys())) + ")"
             )
-            monitor_db.action(query, notify_log.values())
+            monitor_db.action(query, list(notify_log.values()))
 
         logger.info(u"Tautulli Importer :: Notify_log imported for notifier ID %s." % old_notifier_id)
 
