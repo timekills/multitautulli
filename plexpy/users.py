@@ -777,9 +777,9 @@ class Users(object):
                     where = ' AND user_shared_libraries.server_id = %s ' % server_id
                 query = 'SELECT users.allow_guest, user_shared_libraries.user_token, user_shared_libraries.server_token' \
                         '  FROM users ' \
-                        ' WHERE users.user_id = ? AND users.deleted_user = 0 ' + where + \
                         ' INNER JOIN user_shared_libraries ' \
-                        '    ON users.user_id = user_shared_libraries.id'
+                        '    ON users.id = user_shared_libraries.id' \
+                        ' WHERE users.user_id = ? AND users.deleted_user = 0 ' + where
                 result = monitor_db.select_single(query, args=[user_id])
                 if result:
                     tokens = {'allow_guest': result['allow_guest'],
