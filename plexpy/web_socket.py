@@ -237,7 +237,7 @@ class ServerWebSocket(object):
 
         try:
             logger.websocket_debug(data)
-            info = json.loads(data)
+            info = json.loads(data.decode('utf-8'))
         except Exception as e:
             logger.warn(u"Tautulli WebSocket :: %s: Error decoding message from websocket: %s" % (self.server.CONFIG.PMS_NAME, e))
             logger.websocket_error(data)
