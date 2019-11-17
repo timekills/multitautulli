@@ -1,8 +1,12 @@
 # Changelog
 
+## v4.0.03(2019-11-17)
+* (FIXED) Cloudinary image upload issue.
+
 ## v4.0.02 (2019-11-10)
 * (FIXED) LIST issue during database migration from pre-V3.0.00 format.
 * (FIXED) Error in database exception handling.
+* (FIXED) Ensure data passed to json is type STR in web_socket.
 
 ## v4.0.01 (2019-11-10)
 * (FIXED) Ensure list args passed to sqlite are type LIST.
@@ -17,7 +21,7 @@
 * (FIXED) Media filtering in History display.
 
 
-> **NOTE:** If migrating from any release prior to V4.0.00, I recommend a clean install.
+> **NOTE:** If migrating from any release prior to V4.0.00, I recommend a clean install. However, you can keep your database from prior versions.
 
 ##### Changes to the installation instructions:
 * Install Python3:
