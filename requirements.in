@@ -34,6 +34,7 @@ paho-mqtt
 gntp
 PyNMA
 profilehooks
+distro
 
 #asn1crypto
 #backports.functools-lru-cache

@@ -15,6 +15,7 @@
 
 import platform
 from collections import OrderedDict
+import distro
 
 from plexpy import version
 
@@ -23,7 +24,7 @@ PRODUCT = 'Tautulli'
 PLATFORM = platform.system()
 PLATFORM_RELEASE = platform.release()
 PLATFORM_VERSION = platform.version()
-PLATFORM_LINUX_DISTRO = ' '.join(x for x in platform.linux_distribution() if x)
+PLATFORM_LINUX_DISTRO = distro.name(pretty=True)
 PLATFORM_DEVICE_NAME = platform.node()
 BRANCH = version.PLEXPY_BRANCH
 RELEASE = version.PLEXPY_RELEASE_VERSION

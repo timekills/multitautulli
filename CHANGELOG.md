@@ -1,5 +1,9 @@
 # Changelog
 
+## v4.0.04 (2019-11-18)
+* Deprecated function, platform.linux_distribution, replaced with distro. This is needed for Python 3.8. However, there is still an outstanding issue in the passlib package when using Python 3.8.
+* Site packages updated to current releases.
+
 ## v4.0.03(2019-11-17)
 * (FIXED) Cloudinary image upload issue.
 

@@ -18,6 +18,7 @@ click==7.0                # via pip-tools
 cloudinary==1.18.2
 configobj==5.0.6
 cryptography==2.8         # via pyopenssl
+distro==1.4.0
 dnspython==1.16.0         # via ipwhois
 facebook-sdk==3.1.0
 feedparser==5.2.1
@@ -45,18 +46,18 @@ profilehooks==1.11.0
 pycparser==2.19           # via cffi
 pyjwt==1.7.1
 pynma==1.0
-pyopenssl==19.0.0
+pyopenssl==19.1.0
 python-dateutil==2.8.1    # via arrow
 python-twitter==3.5
 pytz==2019.3              # via apscheduler, tempora, tzlocal
-pywin32==225 ; sys_platform == "win32"
+pywin32==227 ; sys_platform == "win32"
 requests-oauthlib==1.3.0  # via python-twitter
 requests==2.22.0
 six==1.13.0               # via apscheduler, bleach, cheroot, cloudinary, configobj, cryptography, mock, pip-tools, pyopenssl, python-dateutil, tempora, websocket-client
 soupsieve==1.9.5          # via beautifulsoup4
 tempora==1.14.1           # via portend
 tzlocal==2.0.0
-urllib3==1.25.6
+urllib3==1.25.7
 webencodings==0.5.1       # via bleach
 websocket-client==0.56.0
 xmltodict==0.12.0
