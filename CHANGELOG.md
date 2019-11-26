@@ -1,5 +1,8 @@
 # Changelog
 
+## v4.0.05 (2019-11-25)
+* Support for Python 3.8.0
+
 ## v4.0.04 (2019-11-18)
 * Deprecated function, platform.linux_distribution, replaced with distro. This is needed for Python 3.8. However, there is still an outstanding issue in the passlib package when using Python 3.8.
 * Site packages updated to current releases.
