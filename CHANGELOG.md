@@ -1,5 +1,9 @@
 # Changelog
 
+## v4.0.06 (2019-12-02)
+* Updated README to clarify the unofficial nature of this fork.
+* (FIXED) Issue with notification handler get_img_info while processing notification queue.
+
 ## v4.0.05 (2019-11-25)
 * Support for Python 3.8.0
 
