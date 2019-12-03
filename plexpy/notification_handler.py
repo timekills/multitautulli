@@ -1157,7 +1157,7 @@ def format_group_index(group_keys):
     num00 = []
 
     for k, g in groupby(enumerate(group_keys), lambda i_x: i_x[0] - i_x[1]):
-        group = map(itemgetter(1), g)
+        group = list(map(itemgetter(1), g))
         g_min, g_max = min(group), max(group)
 
         if g_min == g_max:
@@ -1166,7 +1166,6 @@ def format_group_index(group_keys):
         else:
             num.append('{0:01d}-{1:01d}'.format(g_min, g_max))
             num00.append('{0:02d}-{1:02d}'.format(g_min, g_max))
-
     return ','.join(num) or '0', ','.join(num00) or '00'
 
 

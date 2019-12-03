@@ -1,5 +1,8 @@
 # Changelog
 
+## v4.0.07 (2019-12-03)
+* (FIXED) Issues with newsletter handler generation for TV Shows and Albums.
+
 ## v4.0.06 (2019-12-02)
 * Updated README to clarify the unofficial nature of this fork.
 * (FIXED) Issue with notification handler get_img_info while processing notification queue.

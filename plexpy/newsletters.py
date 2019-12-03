@@ -787,6 +787,8 @@ class RecentlyAdded(Newsletter):
                 albums = []
                 for a in filtered_children:
                     album_metadata = server.PMSCONNECTION.get_metadata_details(a['rating_key'], media_info=False)
+                    album_metadata['pms_web_url'] = item['pms_web_url']
+                    album_metadata['pms_identifier'] = item['pms_identifier']
                     album_metadata['track_count'] = helpers.cast_to_int(album_metadata['children_count'])
                     albums.append(album_metadata)
 
