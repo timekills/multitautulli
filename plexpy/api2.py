@@ -40,8 +40,6 @@ from plexpy import notification_handler
 from plexpy import notifiers
 from plexpy import newsletter_handler
 from plexpy import newsletters
-from plexpy import users
-
 
 class API2:
     def __init__(self, **kwargs):
@@ -133,6 +131,12 @@ class API2:
                 self._api_msg = None
                 self._api_kwargs = kwargs
 
+            if self._api_cmd != 'get_activity':
+                if 'server_id' not in self._api_kwargs:
+                    self._api_kwargs['server_id'] = str(plexpy.PMS_SERVERS.get_server_ids()[0])
+                if 'section_id' in self._api_kwargs:
+                    self._api_kwargs['library_id'] = str(libraries.get_section_index(self._api_kwargs['server_id'], self._api_kwargs['section_id']))
+
         if self._api_msg:
             logger.api_debug(u'Tautulli APIv2 :: %s.' % self._api_msg)
 
@@ -193,7 +197,7 @@ class API2:
                 except IndexError:
                     # We assume this is a traceback
                     tl = (len(templog) - 1)
-                    templog[tl]['msg'] += helpers.sanitize(str(line.replace('\n', ''), 'utf-8'))
+                    templog[tl]['msg'] += helpers.sanitize(line.replace('\n', ''))
                     continue
 
                 if len(line) > 1 and temp_loglevel_and_time is not None and loglvl in line:
@@ -201,7 +205,7 @@ class API2:
                     d = {
                         'time': temp_loglevel_and_time[0],
                         'loglevel': loglvl,
-                        'msg': helpers.sanitize(str(msg.replace('\n', ''), 'utf-8')),
+                        'msg': helpers.sanitize(msg.replace('\n', '')),
                         'thread': thread
                     }
                     templog.append(d)
@@ -351,14 +355,14 @@ class API2:
 
     def refresh_libraries_list(self, **kwargs):
         """ Refresh the Tautulli libraries list."""
-        data = libraries.refresh_libraries()
+        data = plexpy.PMS_SERVERS.refresh_libraries()
         self._api_result_type = 'success' if data else 'error'
 
         return data
 
     def refresh_users_list(self, **kwargs):
         """ Refresh the Tautulli users list."""
-        data = users.refresh_users()
+        data = plexpy.PMS_SERVERS.refresh_users()
         self._api_result_type = 'success' if data else 'error'
 
         return data

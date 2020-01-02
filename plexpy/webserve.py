@@ -5276,8 +5276,13 @@ class WebInterface(object):
                      ]
             ```
         """
-        server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
-        result = server.PMSCONNECTION.get_library_details()
+        if server_id is None:
+            result = []
+            for server in plexpy.PMS_SERVERS:
+                result.extend(server.PMSCONNECTION.get_library_details())
+        else:
+            server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
+            result = server.PMSCONNECTION.get_library_details()
 
         if result:
             return result

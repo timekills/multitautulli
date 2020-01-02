@@ -20,7 +20,7 @@
 
 import urllib.request
 
-from common import USER_AGENT
+from plexpy.common import USER_AGENT
 
 
 class PlexPyURLopener(urllib.request.FancyURLopener):
