@@ -5489,6 +5489,41 @@ class WebInterface(object):
 
     @cherrypy.expose
     @cherrypy.tools.json_out()
+    @requireAuth(member_of("admin"))
+    @addtoapi()
+    def get_pms_update(self, server_id=None, **kwargs):
+        """ Check for updates to the Plex Media Server.
+
+            ```
+            Required parameters:
+                None
+
+            Optional parameters:
+                None
+
+            Returns:
+                json:
+                    {"update_available": true,
+                     "platform": "Windows",
+                     "release_date": "1473721409",
+                     "version": "1.1.4.2757-24ffd60",
+                     "requirements": "...",
+                     "extra_info": "...",
+                     "changelog_added": "...",
+                     "changelog_fixed": "...",
+                     "label": "Download",
+                     "distro": "english",
+                     "distro_build": "windows-i386",
+                     "download_url": "https://downloads.plex.tv/...",
+                     }
+            ```
+        """
+        server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
+        result = server.PMSCONNECTION.get_server_info()
+        return result
+
+    @cherrypy.expose
+    @cherrypy.tools.json_out()
     @requireAuth()
     @addtoapi()
     def get_geoip_lookup(self, ip_address='', **kwargs):
