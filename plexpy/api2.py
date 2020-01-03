@@ -131,7 +131,8 @@ class API2:
                 self._api_msg = None
                 self._api_kwargs = kwargs
 
-            if self._api_cmd != 'get_activity':
+            # Until the remote apps support the multi-server changes, inject a default server_ID into kwargs.
+            if 'server_id' in inspect.getfullargspec(getattr(self, self._api_cmd)).args:
                 if 'server_id' not in self._api_kwargs:
                     self._api_kwargs['server_id'] = str(plexpy.PMS_SERVERS.get_server_ids()[0])
                 if 'section_id' in self._api_kwargs:
