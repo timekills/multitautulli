@@ -1,5 +1,9 @@
 # Changelog
 
+## v4.0.08 (2010-02-08)
+* (FIXED) Issues with IOS App. Since the Android and IOS apps don't support multi-server, I had to put in some workarounds to the API calls. Issue #10.
+* Add a warning in the readme about backing up your database if you are migrating from the official Tautulli.
+
 ## v4.0.07 (2019-12-03)
 * (FIXED) Issues with newsletter handler generation for TV Shows and Albums.
 
