@@ -6,7 +6,8 @@ It has been modified primarily to support multiple Plex Media Servers.
 
 Due to the volume of changes and my lack of understanding of creating smaller commits, this fork will most likely never be incorporated into the original product.
 
-##### As such, this is an unofficial fork and is not supported by the original support channels for Tautulli. 
+##### As such, this is an unofficial fork and is not supported by the original support channels for Tautulli.
+##### If you are upgrading an official Tautulli instance, please be sure to back up your config.ini and tautulli.db. This upgrade will irreversibly migrate your database to the new format required for this fork. 
 
 If you experience any issues, please open an issue request on [this](https://github.com/zSeriesGuy/Tautulli/issues) repo.
 
