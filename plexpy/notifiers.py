@@ -1145,7 +1145,7 @@ class DISCORD(Notifier):
 
     def agent_notify(self, subject='', body='', action='', **kwargs):
         if self.config['incl_subject']:
-            text = subject.encode('utf-8') + '\r\n' + body.encode("utf-8")
+            text = subject.encode('utf-8') + b'\r\n' + body.encode("utf-8")
         else:
             text = body.encode("utf-8")
 
@@ -1173,7 +1173,7 @@ class DISCORD(Notifier):
             poster_url = pretty_metadata.get_poster_url()
             provider_name = pretty_metadata.get_provider_name(provider)
             provider_link = pretty_metadata.get_provider_link(provider)
-            title = pretty_metadata.get_title('\xc2\xb7'.decode('utf8'))
+            title = pretty_metadata.get_title('\xc2\xb7')
             description = pretty_metadata.get_description()
             plex_url = pretty_metadata.get_plex_url()
 
@@ -1560,7 +1560,7 @@ class FACEBOOK(Notifier):
 
     def agent_notify(self, subject='', body='', action='', **kwargs):
         if self.config['incl_subject']:
-            text = subject.encode('utf-8') + '\r\n' + body.encode("utf-8")
+            text = subject.encode('utf-8') + b'\r\n' + body.encode("utf-8")
         else:
             text = body.encode("utf-8")
 
@@ -1680,7 +1680,7 @@ class GROUPME(Notifier):
         data = {'bot_id': self.config['bot_id']}
 
         if self.config['incl_subject']:
-            data['text'] = subject.encode('utf-8') + '\r\n' + body.encode('utf-8')
+            data['text'] = subject.encode('utf-8') + b'\r\n' + body.encode('utf-8')
         else:
             data['text'] = body.encode('utf-8')
 
@@ -3222,7 +3222,7 @@ class SLACK(Notifier):
 
     def agent_notify(self, subject='', body='', action='', **kwargs):
         if self.config['incl_subject']:
-            text = subject.encode('utf-8') + '\r\n' + body.encode("utf-8")
+            text = subject.encode('utf-8') + b'\r\n' + body.encode("utf-8")
         else:
             text = body.encode("utf-8")
 
@@ -3401,7 +3401,7 @@ class TELEGRAM(Notifier):
         data = {'chat_id': self.config['chat_id']}
 
         if self.config['incl_subject']:
-            text = subject.encode('utf-8') + '\r\n' + body.encode('utf-8')
+            text = subject.encode('utf-8') + b'\r\n' + body.encode('utf-8')
         else:
             text = body.encode('utf-8')
 
