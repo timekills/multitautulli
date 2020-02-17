@@ -379,14 +379,13 @@ def check_rclone_status(server, kwargs=None):
     url = '{scheme}://{hostname}:{port}'.format(scheme=scheme,
                                                 hostname=hostname,
                                                 port=port)
-    timeout = 10
     status = False
     try:
         """
           Test if we get back a pid.
         """
         uri = '/core/pid'
-        response = requests.post(url + uri, timeout=timeout, auth=(user, password))
+        response = requests.post(url + uri, timeout=10, auth=(user, password))
         if response.status_code == requests.codes.ok:
             if 'pid' in response.json():
                 status = True
@@ -400,7 +399,7 @@ def check_rclone_status(server, kwargs=None):
                   '&srcRemote=' + testFile + \
                   '&dstFs=' + tmpDir + \
                   '&dstRemote=' + testFile
-            response = requests.post(url + uri, timeout=timeout, auth=(user, password))
+            response = requests.post(url + uri, timeout=20, auth=(user, password))
             if response.status_code == requests.codes.ok:
                 status = True
 
@@ -410,7 +409,7 @@ def check_rclone_status(server, kwargs=None):
         if status:
             status = False
             uri = '/operations/deletefile?fs=' + tmpDir + '&remote=' + testFile
-            response = requests.post(url + uri, timeout=timeout, auth=(user, password))
+            response = requests.post(url + uri, timeout=10, auth=(user, password))
             if response.status_code == requests.codes.ok:
                 status = True
 

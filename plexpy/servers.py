@@ -501,7 +501,7 @@ class plexServer(object):
 
             rclone_jobname = '%s: Check Rclone Mount Status' % self.CONFIG.PMS_NAME
             if plexpy.CONFIG.MONITOR_RCLONE:
-                rclone_time = (30 if self.CONFIG.MONITOR_RCLONE_MOUNT else 0)
+                rclone_time = (60 if self.CONFIG.MONITOR_RCLONE_MOUNT else 0)
                 self.SCHED_LIST.append({'name': rclone_jobname,
                                         'time': {'hours': 0, 'minutes': 0, 'seconds': rclone_time},
                                         'func': activity_pinger.check_rclone_status,
