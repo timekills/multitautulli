@@ -1,6 +1,11 @@
 # Changelog
 
-## v4.0.08 (2010-02-08)
+## v4.0.09 (2020-02-17)
+* (FIXED) Issue with encoding in notifiers.py.
+* Increase rclone mount status checker timeout to reduce/eliminate false alerts.
+* Change rclone status checker interval from 30 seconds to 60 seconds.  
+
+## v4.0.08 (2020-02-08)
 * (FIXED) Issues with IOS App. Since the Android and IOS apps don't support multi-server, I had to put in some workarounds to the API calls. Issue #10.
 * Add a warning in the readme about backing up your database if you are migrating from the official Tautulli.
 
