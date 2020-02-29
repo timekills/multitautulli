@@ -1,5 +1,9 @@
 # Changelog
 
+## v4.0.10 (2020-02-29)
+* (FIXED) Issue with encoding when using killstream script.
+* (FIXED) Issue with dashboard activity cards when streams on different servers have the same session_key.
+
 ## v4.0.09 (2020-02-17)
 * (FIXED) Issue with encoding in notifiers.py.
 * Increase rclone mount status checker timeout to reduce/eliminate false alerts.
