@@ -69,14 +69,14 @@ DOCUMENTATION :: END
 %>
 <%
     data = defaultdict(lambda: 'Unknown', **session)
-    sk = data['session_key']
+    sk = '{}-{}'.format(data['server_id'], data['session_key'])
 
     href = 'info?server_id={}'.format(data['server_id']) + '&rating_key={}'.format(data['rating_key']) if data['rating_key'] else '#'
     parent_href = 'info?server_id={}'.format(data['server_id']) + '&rating_key={}'.format(data['parent_rating_key']) if data['parent_rating_key'] else '#'
     grandparent_href = 'info?server_id={}'.format(data['server_id']) + '&rating_key={}'.format(data['grandparent_rating_key']) if data['grandparent_rating_key'] else '#'
     user_href = 'user?user_id={}'.format(data['user_id']) if data['user_id'] else '#'
 %>
-<div class="dashboard-activity-instance" id="activity-instance-${sk}" data-key="${sk}" data-id="${data['session_id']}" data-server_id="${data['server_id']}"
+<div class="dashboard-activity-instance" id="activity-instance-${sk}" data-key="${sk}" data-session_key="${data['session_key']}" data-id="${data['session_id']}" data-server_id="${data['server_id']}"
      data-rating_key="${data['rating_key']}" data-parent_rating_key="${data['parent_rating_key']}" data-grandparent_rating_key="${data['grandparent_rating_key']}">
     <div class="dashboard-activity-container">
         <%

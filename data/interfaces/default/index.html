@@ -365,7 +365,8 @@
 
                     sessions.forEach(function (session) {
                         var s = (typeof Proxy === "function") ? new Proxy(session, defaultHandler) : session;
-                        var key = s.session_key;
+                        var key = s.server_id + '-' + s.session_key;
+                        var session_key = s.session_key;
                         var session_id = s.session_id;
                         var server_id = s.server_id;
                         var instance = $('#activity-instance-' + key);
@@ -373,7 +374,7 @@
                         // Create a new instance if it doesn't exist
                         if (!(instance.length)) {
                             create_instances.push(key);
-                            getActivityInstance(server_id, key);
+                            getActivityInstance(server_id, session_key);
                             return;
                         }
 
@@ -597,12 +598,12 @@
             },
             complete: function(xhr, status) {
                 $('#currentActivity').append(xhr.responseText);
-                $('#activity-instance-' + session_key + ' .dashboard-activity-info-scroller').scrollbar();
-                $('#activity-instance-' + session_key + ' [data-toggle=tooltip]').tooltip({ container: 'body', placement: 'right', delay: 50 });
-                $('#terminate-button-' + session_key).tooltip('destroy').tooltip({ container: 'body', placement: 'left', delay: 50 });
-                lockScroll('#activity-instance-' + session_key + ' .dashboard-activity-info-scroller');
+                $('#activity-instance-' + server_id + '-' + session_key + ' .dashboard-activity-info-scroller').scrollbar();
+                $('#activity-instance-' + server_id + '-' + session_key + ' [data-toggle=tooltip]').tooltip({ container: 'body', placement: 'right', delay: 50 });
+                $('#terminate-button-' + server_id + '-' + session_key).tooltip('destroy').tooltip({ container: 'body', placement: 'left', delay: 50 });
+                lockScroll('#activity-instance-' + server_id + '-' + session_key + ' .dashboard-activity-info-scroller');
 
-                var index = create_instances.indexOf(session_key);
+                var index = create_instances.indexOf(server_id + '-' + session_key);
                 if (index > -1) {
                     create_instances.splice(index, 1);
                 }
@@ -654,7 +655,7 @@
             cache: false,
             async: true,
             data: {
-                session_key: $(this).data('key')
+                session_key: $(this).data('session_key')
             },
             error: function (xhr, status, error) {
                 console.log(status + ': ' + error);
@@ -674,8 +675,8 @@
         e.preventDefault();
         var session_id = $(this).data('id');
         var server_id = $(this).data('server_id');
-        var key = $(this).data('key');
-        var instance = $('#activity-instance-' + key);
+        var session_key = $(this).data('session_key');
+        var instance = $('#activity-instance-' + server_id + '-' + session_key);
 
         $('#terminate-user').text(instance.find('.dashboard-activity-metadata-user').text());
         $('#terminate-title').text(instance.find('.dashboard-activity-metadata-title').text());
@@ -690,7 +691,7 @@
             $.ajax({
                 url: 'terminate_session',
                 data: {
-                    session_key: key,
+                    session_key: session_key,
                     session_id: session_id,
                     server_id: server_id,
                     message: message

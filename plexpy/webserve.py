@@ -241,7 +241,6 @@ class WebInterface(object):
         session = plexpy.PMS_SERVERS.get_current_activity(server_id=server_id, session_key=session_key, **kwargs)
 
         if session:
-            #session = next((s for s in current_activity['sessions'] if s['session_key'] == session_key), None)
             return serve_template(templatename="current_activity_instance.html", session=session)
         else:
             return serve_template(templatename="current_activity_instance.html", session=None)
