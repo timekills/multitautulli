@@ -238,10 +238,10 @@ class WebInterface(object):
     @requireAuth()
     def get_current_activity_instance(self, server_id, session_key=None, **kwargs):
 
-        current_activity = plexpy.PMS_SERVERS.get_current_activity(server_id=server_id, session_key=session_key, **kwargs)
+        session = plexpy.PMS_SERVERS.get_current_activity(server_id=server_id, session_key=session_key, **kwargs)
 
-        if current_activity:
-            session = next((s for s in current_activity['sessions'] if s['session_key'] == session_key), None)
+        if session:
+            #session = next((s for s in current_activity['sessions'] if s['session_key'] == session_key), None)
             return serve_template(templatename="current_activity_instance.html", session=session)
         else:
             return serve_template(templatename="current_activity_instance.html", session=None)
@@ -4988,7 +4988,7 @@ class WebInterface(object):
     @cherrypy.tools.json_out()
     @requireAuth()
     @addtoapi()
-    def get_activity(self, session_key=None, session_id=None, **kwargs):
+    def get_activity(self, session_key=None, session_id=None, server_id=None, **kwargs):
         """ Get the current activity on the PMS.
 
             ```
@@ -5222,7 +5222,7 @@ class WebInterface(object):
             ```
         """
         try:
-            current_activity = plexpy.PMS_SERVERS.get_current_activity(**kwargs)
+            current_activity = plexpy.PMS_SERVERS.get_current_activity(server_id=server_id, session_id=session_id, session_key=session_key, **kwargs)
             if current_activity:
                 return current_activity
             else:

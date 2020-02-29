@@ -132,7 +132,11 @@ class API2:
                 self._api_kwargs = kwargs
 
             # Until the remote apps support the multi-server changes, inject a default server_ID into kwargs.
+            # If a session_id is passed without a server_ID, determine which server the session is on.
             if 'server_id' in inspect.getfullargspec(getattr(self, self._api_cmd)).args:
+                if 'session_id' in self._api_kwargs and 'server_id' not in self._api_kwargs:
+                    session = plexpy.PMS_SERVERS.get_current_activity(session_id=self._api_kwargs['session_id'])
+                    self._api_kwargs['server_id'] = session['server_id']
                 if 'server_id' not in self._api_kwargs:
                     self._api_kwargs['server_id'] = str(plexpy.PMS_SERVERS.get_server_ids()[0])
                 if 'section_id' in self._api_kwargs:

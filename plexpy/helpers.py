@@ -1156,6 +1156,6 @@ def split_args(args=None):
     if isinstance(args, list):
         return args
     elif isinstance(args, str):
-        return [arg.decode(plexpy.SYS_ENCODING, 'ignore')
+        return [arg
                 for arg in shlex.split(args)]
     return []

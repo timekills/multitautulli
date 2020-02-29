@@ -3075,6 +3075,8 @@ class SCRIPTS(Notifier):
                 if timer:
                     timer.start()
                 output, error = process.communicate()
+                output = output.decode('utf-8')
+                error = error.decode('utf-8')
                 status = process.returncode
             finally:
                 if timer:
@@ -3131,23 +3133,10 @@ class SCRIPTS(Notifier):
         name, ext = os.path.splitext(script)
         prefix = self.script_exts.get(ext, '')
 
-        if os.name == 'nt':
-            script = script.encode(plexpy.SYS_ENCODING, 'ignore')
-
         if prefix:
             script = prefix.split() + [script]
         else:
             script = [script]
-
-        # For manual notifications
-        # if script_args and isinstance(script_args, str):
-        #     # attempts to format it for the user
-        #     script_args = [arg for arg in shlex.split(script_args.encode(plexpy.SYS_ENCODING, 'ignore'))]
-
-        # Windows handles unicode very badly.
-        # https://bugs.python.org/issue19264
-        if script_args:  # and os.name == 'nt':
-            script_args = [arg.encode(plexpy.SYS_ENCODING, 'ignore') for arg in script_args]
 
         # Allow overrides for PYTHONPATH
         if prefix and script_args:

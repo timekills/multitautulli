@@ -198,7 +198,7 @@ class plexServers(object):
 
         return server_status
 
-    def get_current_activity(self, server_id=None, session_key=None, **kwargs):
+    def get_current_activity(self, server_id=None, session_key=None, session_id=None, **kwargs):
         current_activity = {
             'lan_bandwidth': 0,
             'sessions': [],
@@ -226,6 +226,11 @@ class plexServers(object):
                         current_activity['total_bandwidth'] += int(server_activity['total_bandwidth'])
                         current_activity['wan_bandwidth'] += int(server_activity['wan_bandwidth'])
                         current_activity['servers'].append(server_activity)
+
+        if session_key:
+            return next((s for s in current_activity['sessions'] if s['session_key'] == session_key), {})
+        if session_id:
+            return next((s for s in current_activity['sessions'] if s['session_id'] == session_id), {})
 
         return current_activity
 
