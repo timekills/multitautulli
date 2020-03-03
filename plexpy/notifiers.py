@@ -3058,12 +3058,11 @@ class SCRIPTS(Notifier):
             env['PYTHONPATH'] = os.pathsep.join([p for p in sys.path if p])
 
         try:
-            x = self.config['script_folder'].encode('utf-8')
             process = subprocess.Popen(script,
                                        stdin=subprocess.PIPE,
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE,
-                                       cwd=self.config['script_folder'].encode('utf-8'),
+                                       cwd=self.config['script_folder'],
                                        env=env)
 
             if self.config['timeout'] > 0:
