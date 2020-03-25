@@ -1,5 +1,8 @@
 # Changelog
 
+## v4.0.12 (2020-03-25)
+* (FIXED) Fix encoding issues in notifiers.py related to the Py3 migration.
+
 ## v4.0.11 (2020-03-03)
 * (FIXED) Issue with encoding in notifiers.py when using Python < 3.8.
 
