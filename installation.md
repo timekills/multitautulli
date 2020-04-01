@@ -48,6 +48,25 @@
     - Tautulli will be loaded in your browser or listening on <http://localhost:8181>
     - To run Tautulli in the background on startup without the console window, refer to [Install as a daemon](https://github.com/Tautulli/Tautulli-Wiki/wiki/Install-as-a-daemon#linux-systemd). Be sure that the start command in your daemon process executes `\scripts\python3` in the folder where you extracted the ZIP file (eg. `C:\Tautulli\scripts\python3`).    
 
+## OSx
+Tautulli will be installed to `/Applications/Tautulli`.
+
+* Open a terminal
+* Install Git  
+    - `xcode-select --install`
+* Install prerequisites:
+    - `sudo apt-get install python3 python3-venv python3-all-dev`
+* Type: `cd /Applications`
+* Type: `git clone https://github.com/zSeriesGuy/Tautulli.git`
+* Type: `cd Tautulli`
+* Type: `python3 -m venv /Applications/Tautulli`
+* Type: `source /opt/Tautulli/bin/activate`
+* Type: `python3 -m pip install --upgrade pip setuptools pip-tools`
+* Type: `pip3 install -r /opt/Tautulli/requirements.txt`
+* Type: `/Applications/Tautulli/bin/python3 Tautulli.py` to start Tautulli
+* Tautulli will be loaded in your browser or listening on <http://localhost:8181>
+
+
 ## Linux
 Tautulli will be installed to `/opt/Tautulli`.
 
