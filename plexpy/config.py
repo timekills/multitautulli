@@ -208,7 +208,7 @@ class Config(object):
         'GIT_PATH': (str, 'General', ''),
         'GIT_REMOTE': (str, 'General', 'origin'),
         'GIT_TOKEN': (str, 'General', ''),
-        'GIT_USER': (str, 'General', 'Tautulli'),
+        'GIT_USER': (str, 'General', 'zSeriesGuy'),
         'GIT_REPO': (str, 'General', 'Tautulli'),
         'GROUP_HISTORY_TABLES': (int, 'General', 1),
         'GROWL_ENABLED': (int, 'Growl', 0),
@@ -912,6 +912,11 @@ class Config(object):
             self.BUFFER_THRESHOLD = max(self.BUFFER_THRESHOLD, 10)
 
             self.CONFIG_VERSION = 13
+
+        if self.CONFIG_VERSION == 13:
+            self.GIT_USER = 'zSeriesGuy'
+
+            self.CONFIG_VERSION = 14
 
 
 class ServerConfig(Config):
