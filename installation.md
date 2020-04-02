@@ -5,6 +5,7 @@
 ---
 ### Operating Systems:
 - [Windows](#Windows)
+- [OSx](#OSx)
 - [Linux](#Linux)
 
 ---
