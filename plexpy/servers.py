@@ -93,28 +93,34 @@ class plexServers(object):
         thread_list = []
         new_servers = False
 
-        if plexpy.PLEXTV:
-            plextv_servers = plexpy.PLEXTV.get_servers_list(include_cloud=True, all_servers=False)
-            if plextv_servers:
-                for server in plextv_servers:
-                    pmsServer = self.get_server_by_identifier(server['pms_identifier'])
-                    if pmsServer:
-                        pmsServer.CONFIG.process_kwargs(server)
-                        if not pmsServer.CONFIG.PMS_IS_DELETED:
-                            t = threading.Thread(target=pmsServer.refresh)
-                            t.start()
-                            thread_list.append(t)
-                    else:
-                        new_servers = True
-                        pmsServer = plexServer(server)
-                        logger.info(u"Tautulli Servers :: %s: Server Discovered..." % pmsServer.CONFIG.PMS_NAME)
-                        t = threading.Thread(target=pmsServer.refresh)
-                        t.start()
-                        thread_list.append(t)
-                for t in thread_list:
-                    t.join()
-                if new_servers:
-                    threading.Thread(target=self.refresh_users).start()
+        if not plexpy.PLEXTV:
+            logger.error(u"Tautulli Servers :: PLEXTV not initialized")
+            return
+
+        plextv_servers = plexpy.PLEXTV.get_servers_list(include_cloud=True, all_servers=False)
+        if not plextv_servers:
+            logger.info(u"Tautulli Servers :: No Plex Servers Found")
+            return
+
+        for server in plextv_servers:
+            pmsServer = self.get_server_by_identifier(server['pms_identifier'])
+            if pmsServer:
+                pmsServer.CONFIG.process_kwargs(server)
+                if not pmsServer.CONFIG.PMS_IS_DELETED:
+                    t = threading.Thread(target=pmsServer.refresh)
+                    t.start()
+                    thread_list.append(t)
+            else:
+                new_servers = True
+                pmsServer = plexServer(server)
+                logger.info(u"Tautulli Servers :: %s: Server Discovered..." % pmsServer.CONFIG.PMS_NAME)
+                t = threading.Thread(target=pmsServer.refresh)
+                t.start()
+                thread_list.append(t)
+        for t in thread_list:
+            t.join()
+        if new_servers:
+            threading.Thread(target=self.refresh_users).start()
 
         # Mark as deleted any servers that the token doesn't match the current PlexTV account token
         for server in plexpy.PMS_SERVERS:
