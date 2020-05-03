@@ -331,6 +331,7 @@ def update():
             )
             return
 
+    output, err = pip_update()
     output, err = pip_sync()
     logger.info("Tautulli Update Complete")
     return True
@@ -352,6 +353,7 @@ def checkout_git_branch():
                 logger.info('Output: ' + output)
 
         output, err = runGit('pull %s %s' % (plexpy.CONFIG.GIT_REMOTE, plexpy.CONFIG.GIT_BRANCH))
+        output, err = pip_update()
         output, err = pip_sync()
 
 
@@ -424,7 +426,7 @@ def pip_sync():
     logger.info("Running pip-sync to synchronize the environment.")
     cmd = sys.executable + ' -m piptools sync requirements.txt'
     try:
-        logger.debug('Trying to execute: "' + cmd + '" with shell in ' + plexpy.PROG_DIR)
+        logger.info('Trying to execute: "' + cmd + '" with shell in ' + plexpy.PROG_DIR)
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True,
                              cwd=plexpy.PROG_DIR)
         output, err = p.communicate()
@@ -432,7 +434,28 @@ def pip_sync():
 
         for line in output.split('\n'):
             if line:
-                logger.debug('pip-sync output: ' + line)
+                logger.info('pip-sync output: ' + line)
+
+    except Exception as e:
+        logger.error('Command failed: %s' % e)
+        return None, None
+
+    return (output, err)
+
+
+def pip_update():
+    logger.info("Running pip_update to update the installation tools.")
+    cmd = sys.executable + ' -m pip install --upgrade pip setuptools wheel pip-tools'
+    try:
+        logger.info('Trying to execute: "' + cmd + '" with shell in ' + plexpy.PROG_DIR)
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True,
+                             cwd=plexpy.PROG_DIR)
+        output, err = p.communicate()
+        output = output.decode('utf-8').strip()
+
+        for line in output.split('\n'):
+            if line:
+                logger.info('pip_update output: ' + line)
 
     except Exception as e:
         logger.error('Command failed: %s' % e)
