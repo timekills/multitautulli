@@ -1,5 +1,13 @@
 # Changelog
 
+## v4.0.13 (2020-05-03)
+* (UPDATED) Added OSx instructions to installation.md - Thanks, SHASHWATAA
+* (FIXED) Library card initialization.
+* Add logger message for no servers found.
+* (FIXED) Issue with pip-tools.
+* (UPDATED) Python packages.
+* (UPDATED) Added installation tools (pip, setuptools) update to versioncheck.update.
+
 ## v4.0.12 (2020-03-25)
 * (FIXED) Fix encoding issues in notifiers.py related to the Py3 migration.
 
