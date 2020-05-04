@@ -66,7 +66,7 @@ def plex_user_login(username=None, password=None, token=None, headers=None):
         if user_id != str(user_details['user_id']):
             # The user is not in the database.
             return None
-        elif (plexpy.CONFIG.HTTP_PLEX_ADMIN or user_details['allow_guest']) and user_details['is_admin']:
+        elif user_details['is_admin']:
             # Plex admin login
             return user_details, 'admin'
         elif not user_details['allow_guest'] or user_details['deleted_user']:
