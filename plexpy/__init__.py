@@ -1983,7 +1983,7 @@ def dbcheck():
             c_db.execute(
                 'CREATE TABLE IF NOT EXISTS users_temp ('
                 'id INTEGER PRIMARY KEY AUTOINCREMENT, '
-                'user_id INTEGER DEFAULT NULL UNIQUE, username TEXT NOT NULL, friendly_name TEXT, '
+                'user_id INTEGER DEFAULT NULL UNIQUE, username TEXT NOT NULL, friendly_name TEXT, user_token TEXT, '
                 'thumb TEXT, custom_avatar_url TEXT, email TEXT, is_admin INTEGER DEFAULT 0, is_home_user INTEGER DEFAULT NULL, '
                 'is_allow_sync INTEGER DEFAULT NULL, is_restricted INTEGER DEFAULT NULL, do_notify INTEGER DEFAULT 1, '
                 'keep_history INTEGER DEFAULT 1, deleted_user INTEGER DEFAULT 0, allow_guest INTEGER DEFAULT 0, '
@@ -1992,13 +1992,13 @@ def dbcheck():
             )
             c_db.execute(
                 'INSERT INTO users_temp ('
-                'user_id, username, friendly_name, '
+                'user_id, username, friendly_name, user_token, '
                 'thumb, custom_avatar_url, email, is_admin, is_home_user, '
                 'is_allow_sync, is_restricted, do_notify, '
                 'keep_history, deleted_user, allow_guest, '
                 'filter_all, filter_movies, filter_tv, filter_music, filter_photos'
                 ') SELECT '
-                'user_id, username, friendly_name, '
+                'user_id, username, friendly_name, user_token, '
                 'thumb, custom_avatar_url, email, is_admin, is_home_user, '
                 'is_allow_sync, is_restricted, do_notify, '
                 'keep_history, deleted_user, allow_guest, '
@@ -2165,8 +2165,7 @@ def dbcheck():
 
     # Move user_token from user_shared_libraries table back to users table.
     try:
-        c_db.execute('SELECT user_token FROM users')
-    except sqlite3.OperationalError:
+        c_db.execute('SELECT user_token FROM user_shared_libraries')
         logger.debug("Altering database. Move user_token from user_shared_libraries table back to users table.")
         c_db.execute(
             'ALTER TABLE users ADD COLUMN user_token TEXT'
@@ -2195,6 +2194,8 @@ def dbcheck():
         c_db.execute(
             'ALTER TABLE user_shared_libraries_temp RENAME TO user_shared_libraries'
         )
+    except sqlite3.OperationalError:
+        pass
 
     conn_db.commit()
     c_db.close()
