@@ -392,11 +392,11 @@ class PlexTV(object):
                            "filter_tv": helpers.get_xml_attr(a, 'filterTelevision'),
                            "filter_music": helpers.get_xml_attr(a, 'filterMusic'),
                            "filter_photos": helpers.get_xml_attr(a, 'filterPhotos'),
+                           "user_token": helpers.get_xml_attr(a, 'authToken'),
                            "shared_libraries": [],
                            }
             for server in plexpy.PMS_SERVERS:
                 own_details["shared_libraries"].append({"server_id": server.CONFIG.ID,
-                                                        "user_token": helpers.get_xml_attr(a, 'authToken'),
                                                         "server_token": helpers.get_xml_attr(a, 'authToken'),
                                                         })
 

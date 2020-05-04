@@ -775,7 +775,7 @@ class Users(object):
                 where = ''
                 if server_id:
                     where = ' AND user_shared_libraries.server_id = %s ' % server_id
-                query = 'SELECT users.allow_guest, user_shared_libraries.user_token, user_shared_libraries.server_token' \
+                query = 'SELECT users.allow_guest, users.user_token, user_shared_libraries.server_token' \
                         '  FROM users ' \
                         ' INNER JOIN user_shared_libraries ' \
                         '    ON users.id = user_shared_libraries.id' \
