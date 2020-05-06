@@ -230,7 +230,7 @@ class ActivityProcessor(object):
                 # Fetch metadata first so we can return false if it fails
                 if not is_import:
                     logger.debug(u"Tautulli ActivityProcessor :: %s: Fetching metadata for item ratingKey %s" % (server_name, session['rating_key']))
-                    metadata = self.server.PMSCONNECTION.get_metadata_details(rating_key=str(session['rating_key']))
+                    metadata = self.server.get_metadata_details(rating_key=str(session['rating_key']))
                     if not metadata:
                         return False
                     else:

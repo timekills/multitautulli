@@ -18,7 +18,7 @@ import os
 import shutil
 import threading
 import urllib.parse
-import datetime
+from datetime import datetime
 
 import cherrypy
 from cherrypy.lib.static import serve_file, serve_download
@@ -69,6 +69,7 @@ def serve_template(templatename, **kwargs):
     http_root = plexpy.HTTP_ROOT
     server_name = 'Tautulli'
     cache_param = '?' + (plexpy.CURRENT_VERSION or common.RELEASE)
+    cache_param += '.' +  datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
 
     _session = get_session_info()
 
@@ -269,7 +270,7 @@ class WebInterface(object):
             server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
         else:
             for server in plexpy.PMS_SERVERS:
-                activity = server.PMSCONNECTION.get_current_activity()
+                activity = server.get_current_activity()
                 sessions = activity['sessions']
                 session = {'session_id': ''}
                 for session in sessions:
@@ -281,7 +282,7 @@ class WebInterface(object):
                     break
 
         if server and session_id:
-            result = server.PMSCONNECTION.terminate_session(session_key=session_key, session_id=session_id, message=message)
+            result = server.terminate_session(session_key=session_key, session_id=session_id, message=message)
             if result:
                 return {'result': 'success', 'message': 'Session terminated.'}
 
@@ -641,7 +642,7 @@ class WebInterface(object):
             section_id = result['section_id']
             server_id = result['server_id']
             server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
-            result = server.PMSCONNECTION.get_recently_added_details(section_id=section_id, count=limit)
+            result = server.get_recently_added_details(section_id=section_id, count=limit)
         else:
             result = None
 
@@ -3265,7 +3266,7 @@ class WebInterface(object):
         plexpass = plexpy.PLEXTV.get_plexpass_status()
 
         server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
-        update_channel = server.PMSCONNECTION.get_server_update_channel()
+        update_channel = server.get_server_update_channel()
 
         return {'plexpass': plexpass,
                 'pms_platform': common.PMS_PLATFORM_NAME_OVERRIDES.get(
@@ -3900,7 +3901,7 @@ class WebInterface(object):
             ```
         """
         server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
-        result = server.PMSCONNECTION.get_server_pref(pref=pref)
+        result = server.get_server_pref(pref=pref)
 
         if result:
             return result
@@ -4072,7 +4073,7 @@ class WebInterface(object):
         else:
             server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
             if server.WS_CONNECTED:
-                metadata = server.PMSCONNECTION.get_metadata_details(rating_key=rating_key)
+                metadata = server.get_metadata_details(rating_key=rating_key)
             else:
                 raise cherrypy.HTTPRedirect(plexpy.HTTP_ROOT)
             if metadata:
@@ -4104,7 +4105,7 @@ class WebInterface(object):
     def get_item_children(self, server_id, rating_key='', **kwargs):
 
         server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
-        result = server.PMSCONNECTION.get_item_children(rating_key=rating_key)
+        result = server.get_item_children(rating_key=rating_key)
 
         if result:
             return serve_template(templatename="info_children_list.html", data=result, title="Children List")
@@ -4117,7 +4118,7 @@ class WebInterface(object):
     def get_item_children_related(self, server_id, rating_key='', title='', **kwargs):
 
         server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
-        result = server.PMSCONNECTION.get_item_children_related(rating_key=rating_key)
+        result = server.get_item_children_related(rating_key=rating_key)
 
         if result:
             return serve_template(templatename="info_collection_list.html", data=result, title=title)
@@ -4148,11 +4149,11 @@ class WebInterface(object):
         """
         if rating_key:
             server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
-            metadata = server.PMSCONNECTION.get_metadata_details(rating_key=rating_key)
+            metadata = server.get_metadata_details(rating_key=rating_key)
             data = {'timeline_data': metadata, 'notify_action': 'on_created', 'manual_trigger': True}
 
             if metadata['media_type'] not in ('movie', 'episode', 'track'):
-                children = server.PMSCONNECTION.get_item_children(rating_key=rating_key)
+                children = server.get_item_children(rating_key=rating_key)
                 child_keys = [child['rating_key'] for child in children['children_list'] if child['rating_key']]
                 data['child_keys'] = child_keys
 
@@ -4269,7 +4270,7 @@ class WebInterface(object):
                     else:
                         return
 
-                result = server.PMSCONNECTION.get_image(img=img,
+                result = server.get_image(img=img,
                                                         width=width,
                                                         height=height,
                                                         opacity=opacity,
@@ -4537,7 +4538,7 @@ class WebInterface(object):
                           }
         for server in plexpy.PMS_SERVERS:
             if session.allow_session_server(server.CONFIG.ID) and server.CONFIG.PMS_IS_ENABLED:
-                result = server.PMSCONNECTION.get_search_results(query=query, limit=limit)
+                result = server.get_search_results(query=query, limit=limit)
                 search_results['results_count'] += int(result['results_count'])
                 for (k, v) in result['results_list'].items():
                     search_results['results_list'][k].extend(v)
@@ -4600,7 +4601,7 @@ class WebInterface(object):
             data_factory = datafactory.DataFactory()
             old_key_list = data_factory.get_rating_keys_list(server_id=server_id, rating_key=old_rating_key, media_type=media_type)
             server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
-            new_key_list = server.PMSCONNECTION.get_rating_keys_list(rating_key=new_rating_key, media_type=media_type)
+            new_key_list = server.get_rating_keys_list(rating_key=new_rating_key, media_type=media_type)
 
             result = data_factory.update_metadata(server_id=server_id,
                                                   old_key_list=old_key_list,
@@ -4635,7 +4636,7 @@ class WebInterface(object):
         """
 
         server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
-        result = server.PMSCONNECTION.get_rating_keys_list(rating_key=rating_key, media_type=media_type)
+        result = server.get_rating_keys_list(rating_key=rating_key, media_type=media_type)
 
         if result:
             return result
@@ -4677,7 +4678,7 @@ class WebInterface(object):
     def get_pms_sessions_json(self, server_id=None, **kwargs):
         """ Get all the current sessions. """
         server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
-        result = server.PMSCONNECTION.get_sessions('json')
+        result = server.get_sessions('json')
 
         if result:
             return result
@@ -4832,7 +4833,7 @@ class WebInterface(object):
             ```
         """
         server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
-        metadata = server.PMSCONNECTION.get_metadata_details(rating_key=rating_key)
+        metadata = server.get_metadata_details(rating_key=rating_key)
 
         if metadata:
             return metadata
@@ -4887,7 +4888,7 @@ class WebInterface(object):
             media_type = kwargs['type']
 
         server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
-        result = server.PMSCONNECTION.get_recently_added_details(start=start, count=count, media_type=media_type, section_id=section_id)
+        result = server.get_recently_added_details(start=start, count=count, media_type=media_type, section_id=section_id)
 
         if result:
             return result
@@ -4943,7 +4944,7 @@ class WebInterface(object):
             ```
         """
         server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
-        result = server.PMSCONNECTION.get_server_identity()
+        result = server.get_server_identity()
 
         if result:
             return result
@@ -5278,10 +5279,10 @@ class WebInterface(object):
         if server_id is None:
             result = []
             for server in plexpy.PMS_SERVERS:
-                result.extend(server.PMSCONNECTION.get_library_details())
+                result.extend(server.get_library_details())
         else:
             server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
-            result = server.PMSCONNECTION.get_library_details()
+            result = server.get_library_details()
 
         if result:
             return result
@@ -5518,7 +5519,7 @@ class WebInterface(object):
             ```
         """
         server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
-        result = server.PMSCONNECTION.get_server_info()
+        result = server.get_server_info()
         return result
 
     @cherrypy.expose

@@ -23,7 +23,6 @@ from plexpy import helpers
 from plexpy import http_handler
 from plexpy import logger
 from plexpy import users
-from plexpy import pmsconnect
 from plexpy import session
 
 
@@ -55,12 +54,6 @@ class PlexTV(object):
             if not self.token:
                 logger.error(u"Tautulli PlexTV :: PlexTV called, but no token provided.")
                 return
-
-        self.http_handler = http_handler.HTTPHandler(urls=self.urls,
-                                                     token=self.token,
-                                                     timeout=self.timeout,
-                                                     ssl_verify=self.ssl_verify,
-                                                     headers=self.headers)
 
         plexpass = self.get_plexpass_status()
         plexpy.CONFIG.PMS_PLEXPASS = plexpass
@@ -770,8 +763,20 @@ class PlexTV(object):
                                       'pms_token': plexpy.CONFIG.PMS_TOKEN,
                                       }
 
-                            pms_connect = pmsconnect.PmsConnect(url=server['pms_uri'], serverName=server['pms_name'])
-                            pms_ssl_pref = pms_connect.get_server_pref('secureConnections')
+                            request_handler = http_handler.HTTPHandler(urls=server['pms_uri'],
+                                                                       token=self.token,
+                                                                       timeout=self.timeout)
+                            prefs = request_handler.make_request(uri='/:/prefs',
+                                                                 request_type='GET',
+                                                                 output_format='xml')
+                            pms_ssl_pref = 0
+                            if prefs:
+                                xml_head = prefs.getElementsByTagName('Setting')
+                                for a in xml_head:
+                                    if helpers.get_xml_attr(a, 'id') == 'secureConnections':
+                                        pms_ssl_pref = helpers.get_xml_attr(a, 'value')
+                                        break
+
                             if pms_ssl_pref:
                                 server['pms_ssl_pref'] = int(pms_ssl_pref)
 
@@ -913,8 +918,20 @@ class PlexTV(object):
             server['pms_is_remote'] = int(not int(conn['local']))
             server['pms_ssl'] = (1 if conn['protocol'] == 'https' else 0)
 
-            pms_connect = pmsconnect.PmsConnect(url=conn['uri'])
-            server['pms_ssl_pref'] = int(pms_connect.get_server_pref('secureConnections'))
+            request_handler = http_handler.HTTPHandler(urls=conn['uri'],
+                                                       token=self.token,
+                                                       timeout=self.timeout)
+            prefs = request_handler.make_request(uri='/:/prefs',
+                                                 request_type='GET',
+                                                 output_format='xml')
+            pms_ssl_pref = 0
+            if prefs:
+                xml_head = prefs.getElementsByTagName('Setting')
+                for a in xml_head:
+                    if helpers.get_xml_attr(a, 'id') == 'secureConnections':
+                        pms_ssl_pref = helpers.get_xml_attr(a, 'value')
+                        break
+            server['pms_ssl_pref'] = pms_ssl_pref
 
             scheme = ('https' if server['pms_ssl'] else 'http')
             pms_url = '{scheme}://{hostname}:{port}'.format(scheme=scheme,

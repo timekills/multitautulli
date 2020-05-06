@@ -24,7 +24,6 @@ from plexpy import datatables
 from plexpy import helpers
 from plexpy import logger
 #import plextv
-from plexpy import pmsconnect
 from plexpy import session
 
 config_lock = threading.Lock()
@@ -34,7 +33,7 @@ def refresh_libraries(server_id, section_id=None):
     server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
     logger.info(u"Tautulli Libraries :: %s: Requesting libraries list refresh..." % server.CONFIG.PMS_NAME)
 
-    library_sections = pmsconnect.PmsConnect(server=server).get_library_details()
+    library_sections = server.get_library_details()
 
     if library_sections:
         monitor_db = database.MonitorDatabase()
@@ -129,7 +128,7 @@ def update_section_ids():
             server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
 
         if section_type != 'photo':
-            library_children = server.PMSCONNECTION.get_library_children_details(section_id=section_id,
+            library_children = server.get_library_children_details(section_id=section_id,
                                                                                  section_type=section_type)
             if library_children:
                 children_list = library_children['children_list']
@@ -199,11 +198,11 @@ def update_labels():
 
         if section_type != 'photo':
             library_children = []
-            library_labels = server.PMSCONNECTION.get_library_label_details(section_id=section_id)
+            library_labels = server.get_library_label_details(section_id=section_id)
 
             if library_labels:
                 for label in library_labels:
-                    library_children = server.PMSCONNECTION.get_library_children_details(section_id=section_id,
+                    library_children = server.get_library_children_details(section_id=section_id,
                                                                                          section_type=section_type,
                                                                                          label_key=label['label_key'])
 
@@ -489,10 +488,10 @@ class Libraries(object):
             server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
 
             if rating_key:
-                library_children = server.PMSCONNECTION.get_library_children_details(rating_key=rating_key,
+                library_children = server.get_library_children_details(rating_key=rating_key,
                                                                                      get_media_info=True)
             elif id:
-                library_children = server.PMSCONNECTION.get_library_children_details(section_id=section_id,
+                library_children = server.get_library_children_details(section_id=section_id,
                                                                                      section_type=section_type,
                                                                                      get_media_info=True)
             if library_children:
@@ -670,7 +669,7 @@ class Libraries(object):
             if item['rating_key'] and not item['file_size']:
                 file_size = 0
             
-                metadata = server.PMSCONNECTION.get_metadata_children_details(rating_key=item['rating_key'],
+                metadata = server.get_metadata_children_details(rating_key=item['rating_key'],
                                                                               get_children=True)
 
                 for child_metadata in metadata:

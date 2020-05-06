@@ -688,7 +688,7 @@ class RecentlyAdded(Newsletter):
         while not done:
             for server_id in self.config['incl_servers']:
                 server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
-                recent_items = server.PMSCONNECTION.get_recently_added_details(start=str(start), count='10', media_type=media_type)
+                recent_items = server.get_recently_added_details(start=str(start), count='10', media_type=media_type)
                 filtered_items = [i for i in recent_items['recently_added']
                                   if self.start_time < helpers.cast_to_int(i['added_at']) < self.end_time]
                 if len(filtered_items) < 10:
@@ -728,10 +728,10 @@ class RecentlyAdded(Newsletter):
                     continue
 
                 server = plexpy.PMS_SERVERS.get_server_by_id(item['server_id'])
-                show_metadata = server.PMSCONNECTION.get_metadata_details(show_rating_key, media_info=False)
+                show_metadata = server.get_metadata_details(show_rating_key, media_info=False)
                 show_metadata['pms_web_url'] = item['pms_web_url']
                 show_metadata['pms_identifier'] = item['pms_identifier']
-                children = server.PMSCONNECTION.get_item_children(show_rating_key, get_grandchildren=True)
+                children = server.get_item_children(show_rating_key, get_grandchildren=True)
                 filtered_children = [i for i in children['children_list']
                                      if self.start_time < helpers.cast_to_int(i['added_at']) < self.end_time]
                 filtered_children.sort(key=lambda x: int(x['parent_media_index']))
@@ -776,17 +776,17 @@ class RecentlyAdded(Newsletter):
                     continue
 
                 server = plexpy.PMS_SERVERS.get_server_by_id(item['server_id'])
-                artist_metadata = server.PMSCONNECTION.get_metadata_details(artist_rating_key, media_info=False)
+                artist_metadata = server.get_metadata_details(artist_rating_key, media_info=False)
                 artist_metadata['pms_web_url'] = item['pms_web_url']
                 artist_metadata['pms_identifier'] = item['pms_identifier']
-                children = server.PMSCONNECTION.get_item_children(artist_rating_key)
+                children = server.get_item_children(artist_rating_key)
                 filtered_children = [i for i in children['children_list']
                                      if self.start_time < helpers.cast_to_int(i['added_at']) < self.end_time]
                 filtered_children.sort(key=lambda x: x['added_at'])
 
                 albums = []
                 for a in filtered_children:
-                    album_metadata = server.PMSCONNECTION.get_metadata_details(a['rating_key'], media_info=False)
+                    album_metadata = server.get_metadata_details(a['rating_key'], media_info=False)
                     album_metadata['pms_web_url'] = item['pms_web_url']
                     album_metadata['pms_identifier'] = item['pms_identifier']
                     album_metadata['track_count'] = helpers.cast_to_int(album_metadata['children_count'])
