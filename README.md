@@ -12,7 +12,7 @@ Due to the volume of changes and my lack of understanding of creating smaller co
 If you experience any issues, please open an issue request on [this](https://github.com/zSeriesGuy/Tautulli/issues) repo.
 
 ### Features
-- Supports multiple PMS servers.
+- Supports multiple Plex.TV accounts and PMS servers.
 - Supports monitoring rclone mount and includes a notification of up/down status.
 - Import of Tautulli databases to facilitate consolidation of Tautulli data.
 - Multiple levels of Guest Users. A guest user that you allow to log on to Tautulli can be assigned a Guest Access Level that allows them to see more than just their own information.  
