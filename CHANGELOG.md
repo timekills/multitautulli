@@ -1,6 +1,6 @@
 # Changelog
 
-## v4.1.00-beta (2020-05-15)
+## v4.1.00-beta (2020-05-19)
 * (NEW) Support for multiple Plex.TV accounts.
 
 ## v4.0.13 (2020-05-03)
