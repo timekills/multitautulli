@@ -46,19 +46,12 @@ class plexServers(object):
     def __init__(self):
         self.SCHED = BackgroundScheduler()
         self.SCHED_LOCK = threading.Lock()
-
-        db = database.MonitorDatabase()
-        result = db.select('SELECT * FROM servers')
-        for pms in result:
-            name = pms['pms_name']
-            vars(self)[name] = plexServer(pms)
-
         self.initialize_scheduler()
+        self.update_unowned_servers()
 
     def __iter__(self):
-        for (server_name, server) in self.__dict__.items():
-            if isinstance(server, plexServer):
-                yield server
+        for server in self.servers:
+            yield server
 
     def __getattr__(self, key):
         return getattr(self, key)
@@ -68,25 +61,35 @@ class plexServers(object):
 
     @property
     def servers(self):
-        return [server for server in self]
+        servers = []
+        for account in plexpy.PLEXTV_ACCOUNTS.accounts:
+            for server in account.servers:
+                servers.append(server)
+        for server in self.unowned_servers:
+            servers.append(server)
+        return servers
+
+    def update_unowned_servers(self):
+        # Add servers for which there are unknown PlexTV accounts
+        self.unowned_servers = []
+        tokens = []
+        for account in plexpy.PLEXTV_ACCOUNTS.accounts:
+            tokens.append(account.token)
+        db = database.MonitorDatabase()
+        result = db.select('SELECT * FROM servers WHERE pms_token not in ("%s")' % '","'.join(tokens))
+        for serverValues in result:
+            server = plexServer(serverValues)
+            self.unowned_servers.append(server)
 
     def start(self):
-        if plexpy.CONFIG.REFRESH_SERVERS_ON_STARTUP:
-            self.refresh()
-
-        if plexpy.CONFIG.REFRESH_USERS_ON_STARTUP:
-            threading.Thread(target=self.refresh_users).start()
-
-        for (server_name, server) in self.__dict__.items():
-            if isinstance(server, plexServer) and server.CONFIG.PMS_IS_ENABLED and not server.CONFIG.PMS_IS_DELETED:
-                threading.Thread(target=server.start).start()
+        for server in self.servers:
+            threading.Thread(target=server.start).start()
 
     def stop(self):
         if self.SCHED.running:
             self.SCHED.shutdown(wait=False)
-        for (server_name, server) in self.__dict__.items():
-            if isinstance(server, plexServer) and server.PLEX_SERVER_UP:
-                server.shutdown()
+        for server in self.servers:
+            server.shutdown()
 
     def delete(self, server_id=None, keep_history=True):
         result = False
@@ -94,54 +97,19 @@ class plexServers(object):
             server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
             result = server.delete(keep_history=keep_history)
             if result and not keep_history:
-                delattr(self, server.CONFIG.PMS_NAME)
+                delattr(self, server.CONFIG.PMS_IDENTIFIER)
         return result
 
     def refresh(self):
         logger.info(u"Tautulli Servers :: Servers refreshing...")
-        thread_list = []
-        new_servers = False
+        plexpy.PLEXTV_ACCOUNTS.refresh_servers()
 
-        if not plexpy.PLEXTV:
-            logger.error(u"Tautulli Servers :: PLEXTV not initialized")
-            return
-
-        plextv_servers = plexpy.PLEXTV.get_servers_list(include_cloud=True, all_servers=False)
-        if not plextv_servers:
-            logger.info(u"Tautulli Servers :: No Plex Servers Found")
-            return
-
-        for server in plextv_servers:
-            pmsServer = self.get_server_by_identifier(server['pms_identifier'])
-            if pmsServer:
-                pmsServer.CONFIG.process_kwargs(server)
-                if not pmsServer.CONFIG.PMS_IS_DELETED:
-                    t = threading.Thread(target=pmsServer.refresh)
-                    t.start()
-                    thread_list.append(t)
-            else:
-                new_servers = True
-                pmsServer = plexServer(server)
-                logger.info(u"Tautulli Servers :: %s: Server Discovered..." % pmsServer.CONFIG.PMS_NAME)
-                t = threading.Thread(target=pmsServer.refresh)
-                t.start()
-                thread_list.append(t)
-        for t in thread_list:
-            t.join()
-        if new_servers:
-            threading.Thread(target=self.refresh_users).start()
-
-        # Mark as deleted any servers that the token doesn't match the current PlexTV account token
-        for server in plexpy.PMS_SERVERS:
-            if server.CONFIG.PMS_TOKEN != plexpy.CONFIG.PMS_TOKEN:
-                server.delete(keep_history=True)
 
     def refresh_libraries(self):
         thread_list = []
-        for (server_name, server) in self.__dict__.items():
-            if isinstance(server, plexServer) and server.PLEX_SERVER_UP:
-                result = server.refresh_libraries()
-                t = threading.Thread(target=server.refresh)
+        for server in self.servers:
+            if server.PLEX_SERVER_UP:
+                t = threading.Thread(target=server.refresh_libraries)
                 t.start()
                 thread_list.append(t)
         for t in thread_list:
@@ -153,42 +121,40 @@ class plexServers(object):
         return result
 
     def get_server_by_id(self, server_id):
-        for (server_name, server) in self.__dict__.items():
-            if isinstance(server, plexServer) and int(server_id) == server.CONFIG.ID:
+        for server in self.servers:
+            if int(server_id) == server.CONFIG.ID:
                 return server
 
     def get_server_by_identifier(self, pms_identifier):
-        for (server_name, server) in self.__dict__.items():
-            if isinstance(server, plexServer) and pms_identifier == server.CONFIG.PMS_IDENTIFIER:
+        for server in self.servers:
+            if pms_identifier == server.CONFIG.PMS_IDENTIFIER:
                 return server
 
     def get_server_ids(self):
         server_ids = []
-        for (server_name, server) in self.__dict__.items():
-            if isinstance(server, plexServer):
-                if session.allow_session_server(server.CONFIG.ID):
-                    server_ids.append(server.CONFIG.ID)
+        for server in self.servers:
+            if session.allow_session_server(server.CONFIG.ID):
+                server_ids.append(server.CONFIG.ID)
         return server_ids
 
     def get_server_names(self):
         server_names = []
-        for (server_name, server) in self.__dict__.items():
-            if isinstance(server, plexServer):
-                if session.allow_session_server(server.CONFIG.ID):
-                    server_name = {'server_id': server.CONFIG.ID, 'pms_name': server.CONFIG.PMS_NAME}
-                    server_names.append(server_name)
+        for server in self.servers:
+            if session.allow_session_server(server.CONFIG.ID):
+                server_name = {'server_id': server.CONFIG.ID, 'pms_name': server.CONFIG.PMS_NAME}
+                server_names.append(server_name)
         return server_names
 
     def get_recently_added_media(self, server_id=None, count='0', media_type='', **kwargs):
         recently_added = []
-        for (server_name, server) in self.__dict__.items():
-            if isinstance(server, plexServer) and server.PLEX_SERVER_UP:
+        for server in self.servers:
+            if server.PLEX_SERVER_UP:
                 if session.allow_session_server(server.CONFIG.ID):
                     if server_id and int(server_id) != server.CONFIG.ID:
                         continue
                     result = server.get_recently_added_details(count=count, media_type=media_type)
                     if 'recently_added' in result:
-                        recently_added.append({'server_name': server_name, 'server_id': server.CONFIG.ID, 'items': result['recently_added']})
+                        recently_added.append({'server_name': server.CONFIG.PMS_NAME, 'server_id': server.CONFIG.ID, 'items': result['recently_added']})
                     if server_id:
                         break
         if recently_added:
@@ -203,8 +169,8 @@ class plexServers(object):
             'recordsTotal': 0,
             }
 
-        for (server_name, server) in self.__dict__.items():
-            if isinstance(server, plexServer) and not server.CONFIG.PMS_IS_DELETED:
+        for server in self.servers:
+            if not server.CONFIG.PMS_IS_DELETED:
                 if session.allow_session_server(server.CONFIG.ID):
                     server_status['data'].append(server.get_server_status())
 
@@ -225,22 +191,21 @@ class plexServers(object):
             'wan_bandwidth': 0,
             'servers': []
         }
-        for (server_name, server) in self.__dict__.items():
-            if isinstance(server, plexServer):
-                if (server_id and int(server_id) != server.CONFIG.ID) or not server.CONFIG.PMS_IS_ENABLED or not server.WS_CONNECTED:
-                    continue
-                if session.allow_session_server(server.CONFIG.ID):
-                    server_activity = server.get_activity(session_key=session_key, **kwargs)
-                    if server_activity:
-                        current_activity['sessions'].extend(server_activity['sessions'])
-                        current_activity['lan_bandwidth'] += int(server_activity['lan_bandwidth'])
-                        current_activity['stream_count'] += int(server_activity['stream_count'])
-                        current_activity['stream_count_direct_play'] += int(server_activity['stream_count_direct_play'])
-                        current_activity['stream_count_direct_stream'] += int(server_activity['stream_count_direct_stream'])
-                        current_activity['stream_count_transcode'] += int(server_activity['stream_count_transcode'])
-                        current_activity['total_bandwidth'] += int(server_activity['total_bandwidth'])
-                        current_activity['wan_bandwidth'] += int(server_activity['wan_bandwidth'])
-                        current_activity['servers'].append(server_activity)
+        for server in self.servers:
+            if (server_id and int(server_id) != server.CONFIG.ID) or not server.CONFIG.PMS_IS_ENABLED or not server.WS_CONNECTED:
+                continue
+            if session.allow_session_server(server.CONFIG.ID):
+                server_activity = server.get_activity(session_key=session_key, **kwargs)
+                if server_activity:
+                    current_activity['sessions'].extend(server_activity['sessions'])
+                    current_activity['lan_bandwidth'] += int(server_activity['lan_bandwidth'])
+                    current_activity['stream_count'] += int(server_activity['stream_count'])
+                    current_activity['stream_count_direct_play'] += int(server_activity['stream_count_direct_play'])
+                    current_activity['stream_count_direct_stream'] += int(server_activity['stream_count_direct_stream'])
+                    current_activity['stream_count_transcode'] += int(server_activity['stream_count_transcode'])
+                    current_activity['total_bandwidth'] += int(server_activity['total_bandwidth'])
+                    current_activity['wan_bandwidth'] += int(server_activity['wan_bandwidth'])
+                    current_activity['servers'].append(server_activity)
 
         if session_key:
             return next((s for s in current_activity['sessions'] if s['session_key'] == session_key), {})
@@ -275,6 +240,7 @@ class plexServer(object):
 
     _server_id = 0
     _server_name = ''
+    PLEXTV = None
     CONFIG = None
     PLEX_SERVER_UP = None
     WS_CONNECTED = False
@@ -296,10 +262,6 @@ class plexServer(object):
         self.SCHED = BackgroundScheduler()
         self.SCHED_LOCK = threading.Lock()
         self.monitor_lock = threading.Lock()
-        plexpy.CONFIG.PMS_TIMEOUT = plexpy.CONFIG.PMS_TIMEOUT
-
-        if plexpy.PMS_SERVERS:
-            setattr(plexpy.PMS_SERVERS, self.CONFIG.PMS_NAME, self)
 
     @property
     def url(self):
@@ -308,9 +270,21 @@ class plexServer(object):
         else:
             return self.CONFIG.PMS_URL
 
-
     def start(self):
-        if self.CONFIG.PMS_IS_ENABLED:
+        if self.PLEX_SERVER_UP:
+            return
+
+        if not self.PLEXTV:
+            for account in plexpy.PLEXTV_ACCOUNTS.accounts:
+                if account.user_token == self.CONFIG.PMS_TOKEN:
+                    self.PLEXTV = account
+                    break
+
+        if not self.PLEXTV or not self.PLEXTV.is_validated:
+            logger.info(u"Tautulli Servers :: %s: Unable to start. No Valid PlexTV Account." % self.CONFIG.PMS_NAME)
+            return
+
+        if self.CONFIG.PMS_IS_ENABLED and not self.CONFIG.PMS_IS_DELETED:
             logger.info(u"Tautulli Servers :: %s: Monitor Starting." % self.CONFIG.PMS_NAME)
             self.server_shutdown = False
             ready = Event()
@@ -326,17 +300,18 @@ class plexServer(object):
 
             if self.PLEX_SERVER_UP and self.WS_CONNECTED:
                 # Refresh the libraries list on startup
-                if plexpy.PLEXTV and self.CONFIG.PMS_IP and self.CONFIG.REFRESH_LIBRARIES_ON_STARTUP:
+                if self.PLEXTV and self.CONFIG.PMS_IP and self.CONFIG.REFRESH_LIBRARIES_ON_STARTUP:
                     threading.Thread(target=self.refresh_libraries).start()
 
             self.initialize_scheduler()
 
     def shutdown(self):
-        logger.info(u"Tautulli Servers :: %s: Stopping Server Monitoring." % self.CONFIG.PMS_NAME)
-        self.server_shutdown = True
-        self.WS.shutdown()
-        self.initialize_scheduler()
-        self.PLEX_SERVER_UP = None
+        if self.PLEX_SERVER_UP:
+            logger.info(u"Tautulli Servers :: %s: Stopping Server Monitoring." % self.CONFIG.PMS_NAME)
+            self.server_shutdown = True
+            self.WS.shutdown()
+            self.initialize_scheduler()
+            self.PLEX_SERVER_UP = None
 
     def restart(self):
         logger.info(u"Tautulli Servers :: %s: Restarting Server." % self.CONFIG.PMS_NAME)
@@ -381,6 +356,7 @@ class plexServer(object):
                   "rclone_port": self.CONFIG.RCLONE_PORT,
                   "rclone_ssl": self.CONFIG.RCLONE_SSL,
                   "rclone_ssl_hostname": self.CONFIG.RCLONE_SSL_HOSTNAME,
+                  "owner": self.PLEXTV.username if self.PLEXTV else None,
                   }
 
         return config
@@ -396,6 +372,8 @@ class plexServer(object):
                 self.CONFIG.PMS_UPDATE_DISTRO = server_info['distro']
                 self.CONFIG.PMS_UPDATE_DISTRO_BUILD = server_info['distro_build']
                 self.update_available = server_info['update_available']
+        if self.CONFIG.PMS_IS_ENABLED and not self.PLEX_SERVER_UP:
+            self.start()
 
     def refresh_libraries(self):
         result = libraries.refresh_libraries(server_id=self._server_id)
@@ -416,18 +394,22 @@ class plexServer(object):
             'update_available': '',
             'server_status': '',
             'rclone_status': '',
+            'owner': None,
         }
 
         """
          Server Status:
             0 - Server not enabled
             1 - Server enabled and functioning
-            2 - 
+            2 - Token not valid
             3 - Server not connected
+            4 - Server is down
         """
         server_status['server_status'] = (0 if not self.CONFIG.PMS_IS_ENABLED else
                                           1 if self.WS_CONNECTED else
-                                          3
+                                          2 if not self.PLEXTV or not self.PLEXTV.is_validated else
+                                          3 if not self.WS_CONNECTED else
+                                          4
                                           )
 
         """
@@ -460,6 +442,7 @@ class plexServer(object):
                 server_status.update(self.get_activity())
 
         server_status['update_available'] = (1 if self.update_available else 0)
+        server_status['owner'] = self.PLEXTV.username if self.PLEXTV else None
 
         return server_status
 
@@ -467,6 +450,7 @@ class plexServer(object):
         current_activity = {
             'server_id': self.CONFIG.ID,
             'pms_name': self.CONFIG.PMS_NAME,
+            'plexpass': self.PLEXTV.plexpass,
             'sessions': [],
             'stream_count': 0,
             'stream_count_direct_play': 0,
@@ -572,21 +556,20 @@ class plexServer(object):
                         plexpy.schedule_job(self.SCHED, None, job.id, hours=0, minutes=0, seconds=0)
 
     def delete(self, keep_history=False):
-        logger.info(u"Tautulli Servers :: %s: Deleting server from database." % self.CONFIG.PMS_NAME)
+        logger.info(u"Tautulli Servers :: %s: Deleting server." % self.CONFIG.PMS_NAME)
         self.CONFIG.PMS_IS_ENABLED = False
         self.CONFIG.PMS_IS_DELETED = True
         if self.WS_CONNECTED:
             self.shutdown()
-
+        self.delete_all_sessions()
         if not keep_history:
             try:
-                delete_history = self.delete_all_history()
-                delete_libraries = self.delete_all_libraries()
-                delete_users = self.delete_all_users()
+                self.delete_all_history()
+                self.delete_all_libraries()
+                self.delete_all_users()
                 monitor_db = database.MonitorDatabase()
                 logger.info(u"Tautulli Servers :: %s: Deleting server from database." % self.CONFIG.PMS_NAME)
-                server_del = monitor_db.action('DELETE FROM servers '
-                                               'WHERE id = ?', [self.CONFIG.ID])
+                monitor_db.action('DELETE FROM servers WHERE id = ?', [self.CONFIG.ID])
                 return True
 
             except Exception as e:
@@ -598,51 +581,68 @@ class plexServer(object):
         return True
 
     def undelete(self):
+        if self.PLEXTV is None:
+            for account in plexpy.PLEXTV_ACCOUNTS.accounts:
+                if self.CONFIG.PMS_TOKEN == account.user_token:
+                    self.PLEXTV = account
+                    break
+
+        if self.PLEXTV is None:
+            msg = 'No PlexTV Account for this server'
+            return False, msg
+
+        if not self.PLEXTV.is_validated:
+            msg = 'PlexTV Account Token is not valid'
+            return False, msg
+
         self.CONFIG.PMS_IS_DELETED = False
         self.refresh()
         threading.Thread(target=plexpy.PMS_SERVERS.refresh_users).start()
-        return True
+        return True, ''
 
-    def delete_all_history(self):
+    def delete_all_sessions(self):
         monitor_db = database.MonitorDatabase()
 
         try:
-            logger.info(u"Tautulli Servers :: %s: Deleting all history from database." % self.CONFIG.PMS_NAME)
+            logger.info(u"Tautulli Servers :: %s: Deleting all active sessions." % self.CONFIG.PMS_NAME)
+
             query = 'SELECT session_key FROM sessions WHERE server_id = ?'
             result = monitor_db.select(query, [self.CONFIG.ID])
             ap = activity_processor.ActivityProcessor(server=self)
             for item in result:
                 ap.delete_session(session_key=item['session_key'])
                 activity_handler.delete_metadata_cache(session_key=item['session_key'], server=self)
-            sessions_del = \
-                monitor_db.action('DELETE FROM '
-                                  'sessions '
-                                  'WHERE server_id = ?', [self.CONFIG.ID])
-            session_history_media_info_del = \
-                monitor_db.action('DELETE FROM '
-                                  'session_history_media_info '
-                                  'WHERE server_id = ?', [self.CONFIG.ID])
-            session_history_metadata_del = \
-                monitor_db.action('DELETE FROM '
-                                  'session_history_metadata '
-                                  'WHERE server_id = ?', [self.CONFIG.ID])
-            session_history_del = \
-                monitor_db.action('DELETE FROM '
-                                  'session_history '
-                                  'WHERE server_id = ?', [self.CONFIG.ID])
-            recently_added_del = \
-                monitor_db.action('DELETE FROM '
-                                  'recently_added '
-                                  'WHERE server_id = ?', [self.CONFIG.ID])
-            themoviedb_lookup_del = \
-                monitor_db.action('DELETE FROM '
-                                  'themoviedb_lookup '
-                                  'WHERE server_id = ?', [self.CONFIG.ID])
-            tvmaze_lookup_del = \
-                monitor_db.action('DELETE FROM '
-                                  'tvmaze_lookup '
-                                  'WHERE server_id = ?', [self.CONFIG.ID])
+            monitor_db.action('DELETE FROM sessions WHERE server_id = ?', [self.CONFIG.ID])
+            return True
 
+        except Exception as e:
+            logger.warn(u"Tautulli Servers :: %s: Unable to execute database query for delete_all_sessions: %s."
+                        % (self.CONFIG.PMS_NAME, e))
+            return False
+
+    def delete_all_history(self):
+        monitor_db = database.MonitorDatabase()
+
+        try:
+            logger.info(u"Tautulli Servers :: %s: Deleting all history from database." % self.CONFIG.PMS_NAME)
+            monitor_db.action('DELETE FROM '
+                              'session_history_media_info '
+                              'WHERE server_id = ?', [self.CONFIG.ID])
+            monitor_db.action('DELETE FROM '
+                              'session_history_metadata '
+                              'WHERE server_id = ?', [self.CONFIG.ID])
+            monitor_db.action('DELETE FROM '
+                              'session_history '
+                              'WHERE server_id = ?', [self.CONFIG.ID])
+            monitor_db.action('DELETE FROM '
+                              'recently_added '
+                              'WHERE server_id = ?', [self.CONFIG.ID])
+            monitor_db.action('DELETE FROM '
+                              'themoviedb_lookup '
+                              'WHERE server_id = ?', [self.CONFIG.ID])
+            monitor_db.action('DELETE FROM '
+                              'tvmaze_lookup '
+                              'WHERE server_id = ?', [self.CONFIG.ID])
             return True
 
         except Exception as e:
@@ -2328,13 +2328,13 @@ class plexServer(object):
                 and not session.getElementsByTagName('Session') \
                 and not session.getElementsByTagName('TranscodeSession') \
                 and helpers.get_xml_attr(session, 'ratingKey').isdigit() \
-                and plexpy.CONFIG.PMS_PLEXPASS:
+                and self.PLEXTV.plexpass:
             parent_rating_key = helpers.get_xml_attr(session, 'parentRatingKey')
             grandparent_rating_key = helpers.get_xml_attr(session, 'grandparentRatingKey')
 
-            synced_items = plexpy.PLEXTV.get_synced_items(client_id_filter=player_details['machine_id'],
-                                                          rating_key_filter=[rating_key, parent_rating_key,
-                                                                             grandparent_rating_key])
+            synced_items = self.PLEXTV.get_synced_items(client_id_filter=player_details['machine_id'],
+                                                        rating_key_filter=[rating_key, parent_rating_key,
+                                                                           grandparent_rating_key])
             if synced_items:
                 synced_item_details = synced_items[0]
                 sync_id = synced_item_details['sync_id']
@@ -2979,7 +2979,7 @@ class plexServer(object):
         update_channel = self.get_server_update_channel()
         # logger.debug(u"Tautulli Servers :: %s: Plex update channel is %s." % (self.CONFIG.PMS_NAME, update_channel))
 
-        plex_downloads = plexpy.PLEXTV.get_plextv_downloads(plexpass=(update_channel == 'beta'))
+        plex_downloads = self.PLEXTV.get_plextv_downloads(plexpass=(update_channel == 'beta'))
 
         try:
             available_downloads = json.loads(plex_downloads)

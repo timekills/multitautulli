@@ -48,7 +48,7 @@ from plexpy import notifiers
 from plexpy import versioncheck
 from plexpy.config import Config
 from plexpy.servers import plexServer, plexServers
-from plexpy.plextv import PlexTV
+from plexpy.plextv import PlexTVaccounts, PlexTV
 
 PROG_DIR = None
 FULL_PATH = None
@@ -110,7 +110,7 @@ WIN_SYS_TRAY_ICON = None
 SYS_TIMEZONE = None
 SYS_UTC_OFFSET = None
 
-PLEXTV = None
+PLEXTV_ACCOUNTS = None
 PMS_SERVERS = None
 
 def initialize(config_file):
@@ -480,7 +480,7 @@ def schedule_job(scheduler, func, name, hours=0, minutes=0, seconds=0, args=None
 def start():
     global _STARTED
     global PMS_SERVERS
-    global PLEXTV
+    global PLEXTV_ACCOUNTS
 
     if _INITIALIZED:
         initialize_scheduler()
@@ -492,10 +492,16 @@ def start():
         notifiers.check_browser_enabled()
 
         # Initialize the list of plexServers and Start the monitoring threads
-        if CONFIG.PMS_TOKEN:
-            PLEXTV = PlexTV()
-            PMS_SERVERS = plexServers()
-            PMS_SERVERS.start()
+        PLEXTV_ACCOUNTS = PlexTVaccounts()
+        PMS_SERVERS = plexServers()
+
+        if CONFIG.REFRESH_SERVERS_ON_STARTUP:
+            PLEXTV_ACCOUNTS.refresh_servers()
+
+        if CONFIG.REFRESH_USERS_ON_STARTUP:
+            threading.Thread(target=PLEXTV_ACCOUNTS.refresh_users).start()
+
+        PLEXTV_ACCOUNTS.start_servers()
 
         # TODO: JLN - Handle this
         # Initialize System Analytics
@@ -610,7 +616,8 @@ def dbcheck():
     c_db.execute(
         'CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, '
         'user_id INTEGER DEFAULT NULL UNIQUE, username TEXT NOT NULL, friendly_name TEXT, user_token TEXT, '
-        'thumb TEXT, custom_avatar_url TEXT, email TEXT, is_admin INTEGER DEFAULT 0, is_home_user INTEGER DEFAULT NULL, '
+        'thumb TEXT, custom_avatar_url TEXT, email TEXT, plexpass INTEGER DEFAULT 0, is_plextv INTEGER DEFAULT 0, '
+        'is_admin INTEGER DEFAULT 0, is_home_user INTEGER DEFAULT NULL, '
         'is_allow_sync INTEGER DEFAULT NULL, is_restricted INTEGER DEFAULT NULL, do_notify INTEGER DEFAULT 1, '
         'keep_history INTEGER DEFAULT 1, deleted_user INTEGER DEFAULT 0, allow_guest INTEGER DEFAULT 0, '
         'filter_all TEXT, filter_movies TEXT, filter_tv TEXT, filter_music TEXT, filter_photos TEXT '
@@ -2163,10 +2170,25 @@ def dbcheck():
     except sqlite3.OperationalError as e:
         logger.warn(u"Multi-Server Migration -  Database Modifications failed.")
 
+    # Upgrade users table from earlier versions
+    try:
+        c_db.execute('SELECT is_plextv FROM users')
+    except sqlite3.OperationalError:
+        logger.debug(u"Altering database: Add plexpass and is_plextv to users table.")
+        c_db.execute(
+            'ALTER TABLE users ADD COLUMN plexpass INTEGER DEFAULT 0'
+        )
+        c_db.execute(
+            'ALTER TABLE users ADD COLUMN is_plextv INTEGER DEFAULT 0'
+        )
+        c_db.execute(
+            'UPDATE users SET is_plextv = is_admin'
+        )
+
     # Move user_token from user_shared_libraries table back to users table.
     try:
         c_db.execute('SELECT user_token FROM user_shared_libraries')
-        logger.debug("Altering database. Move user_token from user_shared_libraries table back to users table.")
+        logger.debug("Altering database: Move user_token from user_shared_libraries table back to users table.")
         c_db.execute(
             'ALTER TABLE users ADD COLUMN user_token TEXT'
         )
@@ -2199,6 +2221,18 @@ def dbcheck():
 
     conn_db.commit()
     c_db.close()
+
+    # Delete PMS_TOKEN and PMS_PLEXPASS from CONFIG file
+    from configobj import ConfigObj
+    config = ConfigObj(CONFIG_FILE, encoding='utf-8')
+    try:
+        if config['PMS']['pms_token']:
+            del config['PMS']['pms_token']
+            del config['PMS']['pms_plexpass']
+            config.write()
+            CONFIG.reload()
+    except:
+        pass
 
     # Migrate poster_urls to imgur_lookup table
     try:

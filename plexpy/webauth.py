@@ -63,11 +63,18 @@ def plex_user_login(username=None, password=None, token=None, headers=None):
         # Also make sure guest access is enabled for the user and the user is not deleted.
         user_data = Users()
         user_details = user_data.get_details(user_id=user_id)
-        if user_id != str(user_details['user_id']):
+        if int(user_id) != int(user_details['user_id']):
             # The user is not in the database.
             return None
         elif user_details['is_admin']:
             # Plex admin login
+            if user_details['is_plextv']:
+                account = plexpy.PLEXTV_ACCOUNTS.get_account(user_id=user_details['user_id'])
+                if not account.is_validated:
+                    account.reinit()
+                    account.is_validated = True
+                    account.refresh_servers()
+                    account.start_servers()
             return user_details, 'admin'
         elif not user_details['allow_guest'] or user_details['deleted_user']:
             # Guest access is disabled or the user is deleted.

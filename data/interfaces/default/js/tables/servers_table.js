@@ -408,10 +408,14 @@ servers_table_options = {
                         sstt = "Server Up";
                         break;
                       case 2:
-                        c = "Yellow";
-                        sstt = "";
+                        c = "Purple";
+                        sstt = "Server Token Not Valid";
                         break;
                       case 3:
+                        c = "Yellow";
+                        sstt = " Monitoring Not Connected";
+                        break;
+                      case 4:
                         c = "Red";
                         sstt = "Server Down";
                         break;

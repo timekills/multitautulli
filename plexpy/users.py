@@ -24,17 +24,31 @@ from plexpy import helpers
 from plexpy import libraries
 from plexpy import logger
 from plexpy import session
+from plexpy.plextv import PlexTVaccounts, PlexTV
 
 
-def refresh_users():
-    logger.info(u"Tautulli Users :: Requesting users list refresh...")
-    result = plexpy.PLEXTV.get_full_users_list()
+def refresh_users(account=None):
+    result = True
+    if account:
+        result = refresh_account_users(account=account)
+    else:
+        for account in plexpy.PLEXTV_ACCOUNTS.accounts:
+            r = refresh_account_users(account=account)
+            result = r if r == False else result
+    return result
+
+
+def refresh_account_users(account):
+    logger.info(u"Tautulli Users :: Requesting users list refresh for account %s" % account.username)
+    if account.is_validated:
+        result = account.get_full_users_list()
+    else:
+        logger.warn(u"Tautulli Users :: Unable to refresh users list for account %s" % account.username)
+        return False
 
     if result:
         monitor_db = database.MonitorDatabase()
-
         for user in result:
-
             keys_dict = {"user_id": user.pop('user_id')}
 
             # Check if we've set a custom avatar if so don't overwrite it.
@@ -54,7 +68,6 @@ def refresh_users():
             monitor_db.upsert('users', user, keys_dict)
 
             shared_library_keys = monitor_db.select_single('SELECT id FROM users WHERE user_id = ?', [keys_dict['user_id']])
-            monitor_db.action('DELETE FROM user_shared_libraries WHERE id = ?', [shared_library_keys['id']])
 
             if shared_libraries:
                 for shared_library in shared_libraries:
@@ -72,12 +85,11 @@ def refresh_users():
 
                         if 'shared_libraries' in shared_library:
                             monitor_db.upsert('user_shared_libraries', shared_library, shared_library_keys)
+        account.reinit()
+        logger.info(u"Tautulli Users :: Users list refresh complete for account %s" % account.username)
 
-        logger.info(u"Tautulli Users :: Users list refreshed.")
         return True
-    else:
-        logger.warn(u"Tautulli Users :: Unable to refresh users list.")
-        return False
+    return False
 
 
 class Users(object):
@@ -325,16 +337,19 @@ class Users(object):
             except Exception as e:
                 logger.warn(u"Tautulli Users :: Unable to execute database query for set_config: %s." % e)
 
-    def get_details(self, user_id=None, user=None, email=None):
+    def get_details(self, user_id=None, user=None, email=None, token=None):
         default_return = {'user_id': 0,
                           'username': 'Local',
                           'friendly_name': 'Local',
                           'user_thumb': common.DEFAULT_USER_THUMB,
                           'email': '',
+                          'is_plextv': '',
                           'is_admin': '',
                           'is_home_user': 0,
                           'is_allow_sync': 0,
                           'is_restricted': 0,
+                          'plexpass': 0,
+                          'user_token': '',
                           'do_notify': 0,
                           'keep_history': 1,
                           'allow_guest': 0,
@@ -344,34 +359,30 @@ class Users(object):
                           'shared_servers': (),
                           }
 
-        if user_id is None and not user and not email:
+        if user_id is None and not user and not email and not token:
             return default_return
 
-        def get_user_details(user_id=user_id, user=user, email=email):
+        def get_user_details(user_id=user_id, user=user, email=email, token=token):
             monitor_db = database.MonitorDatabase()
+
+            query = 'SELECT id, user_id, username, friendly_name, thumb AS user_thumb, custom_avatar_url AS custom_thumb, ' \
+                    'email, is_admin, is_home_user, is_allow_sync, is_restricted, do_notify, keep_history, deleted_user, ' \
+                    'allow_guest, user_token, is_plextv, plexpass ' \
+                    'FROM users '
 
             try:
                 if str(user_id).isdigit():
-                    query = 'SELECT id, user_id, username, friendly_name, thumb AS user_thumb, custom_avatar_url AS custom_thumb, ' \
-                            'email, is_admin, is_home_user, is_allow_sync, is_restricted, do_notify, keep_history, deleted_user, ' \
-                            'allow_guest ' \
-                            'FROM users ' \
-                            'WHERE user_id = ? '
+                    query = query + ' WHERE user_id = ? '
                     result = monitor_db.select(query, args=[user_id])
                 elif user:
-                    query = 'SELECT id, user_id, username, friendly_name, thumb AS user_thumb, custom_avatar_url AS custom_thumb, ' \
-                            'email, is_admin, is_home_user, is_allow_sync, is_restricted, do_notify, keep_history, deleted_user, ' \
-                            'allow_guest ' \
-                            'FROM users ' \
-                            'WHERE username = ? COLLATE NOCASE '
+                    query = query + ' WHERE username = ? COLLATE NOCASE '
                     result = monitor_db.select(query, args=[user])
                 elif email:
-                    query = 'SELECT id, user_id, username, friendly_name, thumb AS user_thumb, custom_avatar_url AS custom_thumb, ' \
-                            'email, is_admin, is_home_user, is_allow_sync, is_restricted, do_notify, keep_history, deleted_user, ' \
-                            'allow_guest ' \
-                            'FROM users ' \
-                            'WHERE email = ? COLLATE NOCASE '
+                    query = query + ' WHERE email = ? COLLATE NOCASE '
                     result = monitor_db.select(query, args=[email])
+                elif token:
+                    query = query + ' WHERE user_token = ? '
+                    result = monitor_db.select(query, args=[token])
                 else:
                     result = []
 
@@ -412,10 +423,13 @@ class Users(object):
                                     'friendly_name': friendly_name,
                                     'user_thumb': user_thumb,
                                     'email': item['email'],
+                                    'is_plextv': item['is_plextv'],
                                     'is_admin': item['is_admin'],
                                     'is_home_user': item['is_home_user'],
                                     'is_allow_sync': item['is_allow_sync'],
                                     'is_restricted': item['is_restricted'],
+                                    'plexpass': item['plexpass'],
+                                    'user_token': item['user_token'],
                                     'do_notify': item['do_notify'],
                                     'keep_history': item['keep_history'],
                                     'deleted_user': item['deleted_user'],
@@ -616,7 +630,7 @@ class Users(object):
 
         try:
             query = 'SELECT id, user_id, username, friendly_name, thumb, custom_avatar_url, email, ' \
-                    'is_admin, is_home_user, is_allow_sync, is_restricted, ' \
+                    'is_plextv, is_admin, is_home_user, is_allow_sync, is_restricted, ' \
                     'do_notify, keep_history, allow_guest, ' \
                     'filter_all, filter_movies, filter_tv, filter_music, filter_photos ' \
                     'FROM users WHERE deleted_user = 0'
@@ -632,6 +646,7 @@ class Users(object):
                     'friendly_name': item['friendly_name'] or item['username'],
                     'thumb': item['custom_avatar_url'] or item['thumb'],
                     'email': item['email'],
+                    'is_plextv': item['is_plextv'],
                     'is_admin': item['is_admin'],
                     'is_home_user': item['is_home_user'],
                     'is_allow_sync': item['is_allow_sync'],
@@ -795,7 +810,7 @@ class Users(object):
         return None
 
     def get_filters(self, user_id=None):
-        import urlparse
+        import urllib.parse
 
         if not user_id:
             return {}
@@ -815,7 +830,7 @@ class Users(object):
                 
             for f in v.split('|'):
                 if 'contentRating=' in f or 'label=' in f:
-                    filters.update(dict(urlparse.parse_qsl(f)))
+                    filters.update(dict(urllib.parse.parse_qsl(f)))
                         
             filters['content_rating'] = tuple(f for f in filters.pop('contentRating', '').split(',') if f)
             filters['labels'] = tuple(f for f in filters.pop('label', '').split(',') if f)
@@ -925,3 +940,66 @@ class Users(object):
         except Exception as e:
             logger.warn(u"Tautulli Users :: Unable to execute database query for delete_login_log: %s." % e)
             return False
+
+    def get_plextv_accounts(self, kwargs=None):
+        default_return = {'recordsFiltered': 0,
+                          'recordsTotal': 0,
+                          'draw': 0,
+                          'data': 'null',
+                          'error': 'Unable to execute database query.'}
+
+        if int(session.get_session_access_level()) < 9:
+            return default_return
+
+        monitor_db = database.MonitorDatabase()
+
+        try:
+            query = 'SELECT users.user_id,' \
+                    '  users.username,' \
+                    '  max(user_login.timestamp) AS timestamp,' \
+                    '  users.user_token,' \
+                    '  user_login.ip_address AS ip,' \
+                    '  user_login.host AS host,' \
+                    '  user_login.user_agent,' \
+                    '  user_login.success,' \
+                    '  (CASE WHEN users.friendly_name IS NULL OR TRIM(users.friendly_name) = ""' \
+                    '  THEN users.username ELSE users.friendly_name END) AS friendly_name' \
+                    ' FROM users' \
+                    ' LEFT OUTER JOIN user_login ON users.user_id = user_login.user_id' \
+                    ' WHERE users.is_plextv = 1' \
+                    ' GROUP BY users.username' \
+                    ' ORDER BY users.username ASC'
+
+            results = monitor_db.select(query=query)
+        except Exception as e:
+            logger.warn(u"Tautulli Users :: Unable to execute database query for get_users: %s." % e)
+            return None
+
+        rows = []
+        for item in results:
+            row = {'username': item['username'],
+                   'user_id': item['user_id'],
+                   'usertoken': item['user_token'],
+                   'friendly_name': item['friendly_name'] or item['username'],
+                   'timestamp': '',
+                   'ip': '',
+                   'host': '',
+                   'user_agent': '',
+                   'os': '',
+                   'browser': '',
+                   'success': '',
+                   }
+
+            if item['timestamp'] is not None:
+                (os, browser) = httpagentparser.simple_detect(item['user_agent'])
+                row['timestamp'] = item['timestamp']
+                row['ip'] = item['ip']
+                row['host'] = item['host']
+                row['user_agent'] = item['user_agent']
+                row['os'] = os
+                row['browser'] = browser
+                row['success'] = item['success']
+
+            rows.append(row)
+
+        return rows

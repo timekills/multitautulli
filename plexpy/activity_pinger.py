@@ -15,7 +15,6 @@
 
 import time
 import requests
-#import socket
 
 import plexpy
 from plexpy import activity_processor
@@ -270,7 +269,7 @@ def connect_server(server=None, log=True, startup=False):
         if log:
             logger.info(u"Tautulli Monitor :: %s: Checking for Plex Cloud server status..." % server.CONFIG.PMS_NAME)
 
-        status = plexpy.PLEXTV.get_cloud_server_status(server=server)
+        status = server.PLEXTV.get_cloud_server_status(server=server)
 
         if status is True:
             logger.info(u"Tautulli Monitor :: %s: Plex Cloud server is active." % server.CONFIG.PMS_NAME)

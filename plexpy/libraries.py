@@ -72,9 +72,10 @@ def refresh_libraries(server_id, section_id=None):
                                 '   ON library_sections.server_id = servers.id ' \
                                 'WHERE library_sections.id = ?'
                         result = monitor_db.select_single(query, [library_id])
-                        if result['pms_name'] not in library_cards:
-                            library_cards[result['pms_name']] = []
-                        library_cards[result['pms_name']].append(library_id)
+                        if 'pms_name' in result:
+                            if result['pms_name'] not in library_cards:
+                                library_cards[result['pms_name']] = []
+                            library_cards[result['pms_name']].append(library_id)
 
                     library_keys = []
                     for k, v in sorted(library_cards.items()):

@@ -18,6 +18,10 @@
                 <div class="container-fluid">
 
                     <div class="padded-header">
+                        <h3 >Owner <small><span style="color: #fff;">${server['owner']}</span></small></h3>
+                    </div>
+
+                    <div class="padded-header">
                         <h3 id="resources-xml">Plex Media Server <small style="color: #fff;">Version <span id="pms_version">${server['pms_version']}</span></small></h3>
                     </div>
 
@@ -280,7 +284,11 @@
 
             <div class="modal-footer">
                 <p>
+                    % if server['owner'] and server['pms_is_deleted']:
+                    <input type="button" class="btn btn-danger btn-edit" id="undelete-server-item" style="float:left;" value="Undelete">
+                    % elif server['owner'] or not server['pms_is_deleted']:
                     <input type="button" class="btn btn-danger btn-edit" id="delete-server-item" style="float:left;" value="Delete">
+                    % endif
                     <input type="button" class="btn btn-danger btn-edit" id="purge-server-item" style="float:left;" value="Purge">
                     <input type="button" class="btn btn-bright save-button" value="Save" data-success="Changes saved successfully">
                 </p>
@@ -542,13 +550,28 @@
     });
 
     $('#delete-server-item').click(function () {
-        var msg = 'Are you sure you want to delete the <strong>${server["pms_name"]}</strong> server?<br>This will <strong>keep</strong> the server history and place the server in deleted status.<br>This is irreversible!';
+        var msg = 'Are you sure you want to delete the <strong>${server["pms_name"]}</strong> server?<br>This will <strong>keep</strong> the server history and place the server in deleted status.<br>This is reversible.';
         var url = 'delete_server';
         confirmAjaxCall(url, msg, { server_id: '${server["id"]}', keep_history: true }, null,
                 function deleteServerCallback() {
                     $('#server-config-modal').modal('hide');
                     config_servers_table = $('#config-servers-table').DataTable();
                     config_servers_table.ajax.reload();
+                    getServersTable();
+                    getLibrarySections();
+                }
+         );
+    });
+
+    $('#undelete-server-item').click(function () {
+        var msg = 'Are you sure you want to undelete the <strong>${server["pms_name"]}</strong> server?';
+        var url = 'undelete_server';
+        confirmAjaxCall(url, msg, { server_id: '${server["id"]}' }, null,
+                function deleteServerCallback() {
+                    $('#server-config-modal').modal('hide');
+                    config_servers_table = $('#config-servers-table').DataTable();
+                    config_servers_table.ajax.reload();
+                    getServersTable();
                     getLibrarySections();
                 }
          );
@@ -562,6 +585,7 @@
                     $('#server-config-modal').modal('hide');
                     config_servers_table = $('#config-servers-table').DataTable();
                     config_servers_table.ajax.reload();
+                    getServersTable();
                     getLibrarySections();
                 }
          );

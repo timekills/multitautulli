@@ -88,12 +88,10 @@ class Config(object):
         'GROUPING_USER_HISTORY': (int, 'PlexWatch', 0),
         'GROUPING_CHARTS': (int, 'PlexWatch', 0),
         'PLEXWATCH_DATABASE': (str, 'PlexWatch', ''),
-        'PMS_TOKEN': (str, 'PMS', ''),
         'PMS_UUID': (str, 'PMS', ''),
         'PMS_LOGS_FOLDER': (str, 'PMS', ''),
         'PMS_LOGS_LINE_CAP': (int, 'PMS', 1000),
         'PMS_TIMEOUT': (int, 'Advanced', 15),
-        'PMS_PLEXPASS': (int, 'PMS', 0),
         'TIME_FORMAT': (str, 'General', 'HH:mm'),
         'ANON_REDIRECT': (str, 'General', 'http://www.nullrefer.com/?'),
         'API_ENABLED': (int, 'General', 1),
@@ -728,7 +726,7 @@ class Config(object):
             new_config[section][ini_key] = self._config[section][ini_key]
 
         # Write it to file
-        logger.info(u"Tautulli Config :: Writing configuration to file")
+        logger.debug(u"Tautulli Config :: Writing configuration to file")
 
         try:
             new_config.write()
@@ -1014,7 +1012,7 @@ class ServerConfig(Config):
             values_dict.pop('id')
 
         try:
-            logger.info("Tautulli ServerConfig :: %s: Writing configuration to database"
+            logger.debug("Tautulli ServerConfig :: %s: Writing configuration to database"
                         % self.PMS_NAME)
             monitor_db = database.MonitorDatabase()
             result = monitor_db.upsert('servers', key_dict=key_dict, value_dict=values_dict)

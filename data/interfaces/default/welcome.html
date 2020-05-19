@@ -78,7 +78,6 @@
                             Tautulli requires a Plex.tv account. Click the button below to sign in on Plex.tv. You may need to allow popups in your browser.
                         </p>
                     </div>
-                    <input type="hidden" class="form-control" name="pms_token" id="pms_token" value="" data-validate="validatePMStoken">
                     <a class="btn btn-dark" id="sign-in-plex" href="#" role="button">Sign In with Plex</a>
                     <span style="margin-left: 10px; display: none;" id="pms-token-status"></span>
                 </div>
@@ -292,16 +291,17 @@ $(document).ready(function() {
     });
 
     var authenticated = false;
+    var token = '';
 
     function OAuthPreFunction() {
-        $("#pms_token").val('');
+        token = '';
         $("#pms-token-status").html('<i class="fa fa-refresh fa-spin"></i>&nbsp; Waiting for authentication...').fadeIn('fast');
     }
 
     function OAuthSuccessCallback(authToken) {
-        $("#pms_token").val(authToken);
         $("#pms-token-status").html('<i class="fa fa-check"></i>&nbsp; Authentication successful.').fadeIn('fast');
         authenticated = true;
+        token = authToken;
         getServersTable();
     }
 
@@ -314,9 +314,8 @@ $(document).ready(function() {
     });
 
     function getServersTable() {
-        authToken = document.getElementById('pms_token').value
         servers_table_options.ajax = {url: 'discover',
-                                      data: {token: authToken},
+                                      data: {token: token},
                                       scrollY: '100px',
                                       scrollCollapse: true,
                                       paging: false

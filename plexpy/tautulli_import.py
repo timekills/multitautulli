@@ -23,100 +23,159 @@ from plexpy import libraries
 from plexpy import logger
 from plexpy import servers
 
+tables = [
+    'users',
+    'servers',
+    'session_history',
+    'session_history_media_info',
+    'session_history_metadata',
+    'library_sections',
+    'recently_added',
+    'themoviedb_lookup',
+    'tvmaze_lookup',
+    'newsletters',
+    'notifiers',
+    'notifier_log',
+]
 
-def validate_database(database=None):
+
+def validate_database(import_database=None):
 
     try:
-        if not os.path.isfile(database):
+        if not os.path.isfile(import_database):
             logger.error(u"Tautulli Importer :: File Not Found.")
             return 'File Not Found'
-        connection = sqlite3.connect(database, timeout=20)
     except sqlite3.OperationalError:
         logger.error(u"Tautulli Importer :: Invalid database specified.")
         return 'Invalid database specified.'
     except ValueError:
         logger.error(u"Tautulli Importer :: Invalid database specified.")
         return 'Invalid database specified.'
-    except:
-        logger.error(u"Tautulli Importer :: Uncaught exception.")
+    except Exception as e:
+        logger.error(u"Tautulli Importer :: Exception: %s" % e)
         return 'Uncaught exception.'
 
-    try:
-        connection.execute('SELECT id from servers')
-        connection.close()
-    except sqlite3.OperationalError as e:
-        if str(e) == 'no such table: servers':
-            logger.error(u"Tautulli Importer :: This database is not a V3.0.00 or higher database.")
-            return 'This database is not a V3.0.00 or higher database.'
-        else:
-            logger.error(u"Tautulli Importer :: %s" % e)
-            return e
-    except:
-        logger.error(u"Tautulli Importer :: Uncaught exception.")
-        return 'Uncaught exception.'
+    import_db = sqlite3.connect(import_database, timeout=20)
+    tautulli_db = sqlite3.connect(plexpy.DB_FILE)
+    validated = True
+    for table in tables:
+        result = tautulli_db.execute('PRAGMA TABLE_INFO(%s)' % table).fetchall()
+        tautulli_table_schema = []
+        import_table_schema = []
+        for column in result:
+            tautulli_table_schema.append({'column': column[1], 'type': column[2]})
+        result = import_db.execute('PRAGMA TABLE_INFO(%s)' % table).fetchall()
+        for column in result:
+            import_table_schema.append({'column': column[1], 'type': column[2]})
+        if len(import_table_schema) != len(tautulli_table_schema):
+            validated = False
+            break
+        for import_column in import_table_schema:
+            if import_column not in tautulli_table_schema:
+                validated = False
+                break
+        if not validated:
+            break
+    import_db.close()
+    tautulli_db.close()
 
-    return 'success'
+    if validated:
+        return "validated"
+    else:
+        logger.warn('Tautulli Importer :: Import Failed. The database being imported is not in this version of Tautulli format.')
+        return 'Database not in this version of Tautulli format.'
 
 
 def import_from_tautulli(import_database=None, import_ignore_interval=0):
+    logger.info(u"Tautulli Importer :: Data import from %s in progress..." % import_database)
 
     try:
         import_db = sqlite3.connect(import_database, timeout=20)
         import_db.row_factory = database.dict_factory
-        monitor_db = database.MonitorDatabase()
-    except sqlite3.OperationalError:
-        logger.error(u"Tautulli Importer :: Invalid filename.")
-        return None
-    except ValueError:
-        logger.error(u"Tautulli Importer :: Invalid filename.")
-        return None
+        tautulli_db = database.MonitorDatabase()
 
-    logger.info(u"Tautulli Importer :: Data import from %s in progress..." % import_database)
+        account_list = import_users(import_db, tautulli_db)
+        import_servers(import_db, tautulli_db, import_ignore_interval)
 
-    try:
-        servers_list = import_db.execute('SELECT * FROM servers').fetchall()
-        for server in servers_list:
-            new_server = False
-            old_server_id = server.pop('id')
-            logger.info(u"Tautulli Importer :: Importing Server: %s(%s)" % (server['pms_name'], old_server_id))
-            query = 'SELECT id FROM servers WHERE pms_identifier = "%s"' % server['pms_identifier']
-            existing_server_result = monitor_db.select_single(query)
-            if not existing_server_result:
-                server['pms_is_enabled'] = 0
-                query = (
-                    "INSERT INTO servers (" + ", ".join(server.keys()) + ")" +
-                    " VALUES (" + ",".join(["?"] * len(server.keys())) + ")"
-                )
-                monitor_db.action(query, server.values())
-                new_server_id = monitor_db.last_insert_id()
-                server['id'] = new_server_id
-                new_server = True
-            else:
-                new_server_id = existing_server_result['id']
-
-            import_library_sections(import_db, monitor_db, old_server_id, new_server_id)
-            import_themoviedb_lookup(import_db, monitor_db, old_server_id, new_server_id)
-            import_tvmaze_lookup(import_db, monitor_db, old_server_id, new_server_id)
-            import_recently_added(import_db, monitor_db, old_server_id, new_server_id)
-            import_session_history(import_db, monitor_db, old_server_id, new_server_id, import_ignore_interval)
-            if new_server:
-                servers.plexServer(server)
-
-        notifier_lookup = import_notifiers(import_db, monitor_db)
-        import_newsletters(import_db, monitor_db, notifier_lookup)
+        notifier_lookup = import_notifiers(import_db, tautulli_db)
+        import_newsletters(import_db, tautulli_db, notifier_lookup)
 
         logger.info(u"Tautulli Importer :: Tautulli data import complete successfully.")
         import_db.close()
-        plexpy.PMS_SERVERS.refresh()
 
-    except sqlite3.IntegrityError:
-        logger.error(u"Tautulli Import_Tautulli :: Queries failed: %s", query)
+        for user_id in account_list:
+            account = plexpy.PLEXTV_ACCOUNTS.reinit_account(user_id=user_id)
+            account.refresh_servers()
+            account.refresh_users()
+
+        plexpy.PMS_SERVERS.update_unowned_servers()
 
     except Exception as e:
         logger.error(u"Tautulli Importer :: Failed to import tautulli database: %s" % e)
 
 
-def import_session_history(import_db, monitor_db, old_server_id, new_server_id, import_ignore_interval):
+def import_users(import_db, tautulli_db):
+    logger.info(u"Tautulli Importer :: Importing Users")
+
+    users_list = import_db.execute('SELECT * FROM users').fetchall()
+    account_list = []
+    for user in users_list:
+        user.pop('id')
+        if user['is_plextv']:
+            logger.info(u"Tautulli Importer :: Importing PlexTV Account %s" % user['username'])
+            account_list.append(user['user_id'])
+        exist = tautulli_db.select_single('SELECT id FROM users WHERE user_id = ?', args=[user['user_id']])
+        if not exist:
+            query = (
+                    "INSERT INTO users (" + ", ".join(user.keys()) + ")" +
+                    " VALUES (" + ",".join(["?"] * len(user.keys())) + ")"
+            )
+            try:
+                tautulli_db.action(query, user.values())
+            except sqlite3.IntegrityError:
+                pass
+        elif user['is_plextv']:
+            key_dict = {'user_id': user['user_id']}
+            val_dict = {}
+            val_dict['user_token'] = user['user_token']
+            val_dict['is_plextv'] = user['is_plextv']
+            val_dict['is_admin'] = user['is_admin']
+            val_dict['plexpass'] = user['plexpass']
+            val_dict['is_allow_sync'] = user['is_allow_sync']
+            tautulli_db.upsert('users', key_dict=key_dict, value_dict=val_dict)
+    return account_list
+
+
+def import_servers(import_db, tautulli_db, import_ignore_interval):
+    logger.info(u"Tautulli Importer :: Importing Servers")
+    servers_list = import_db.execute('SELECT * FROM servers').fetchall()
+    for server in servers_list:
+        new_server = False
+        old_server_id = server.pop('id')
+        logger.info(u"Tautulli Importer :: Importing Server: %s(%s)" % (server['pms_name'], old_server_id))
+        query = 'SELECT id FROM servers WHERE pms_identifier = "%s"' % server['pms_identifier']
+        existing_server_result = tautulli_db.select_single(query)
+        if not existing_server_result:
+            server['pms_is_enabled'] = 0
+            query = (
+                "INSERT INTO servers (" + ", ".join(server.keys()) + ")" +
+                " VALUES (" + ",".join(["?"] * len(server.keys())) + ")"
+            )
+            tautulli_db.action(query, server.values())
+            new_server_id = tautulli_db.last_insert_id()
+            server['id'] = new_server_id
+            new_server = True
+        else:
+            new_server_id = existing_server_result['id']
+
+        import_library_sections(import_db, tautulli_db, old_server_id, new_server_id)
+        import_themoviedb_lookup(import_db, tautulli_db, old_server_id, new_server_id)
+        import_tvmaze_lookup(import_db, tautulli_db, old_server_id, new_server_id)
+        import_recently_added(import_db, tautulli_db, old_server_id, new_server_id)
+        import_session_history(import_db, tautulli_db, old_server_id, new_server_id, import_ignore_interval)
+
+
+def import_session_history(import_db, tautulli_db, old_server_id, new_server_id, import_ignore_interval):
     logger.info(u"Tautulli Importer :: Importing session_history table for ServerID: %s" % old_server_id)
 
     import_ignore_interval = (int(import_ignore_interval) if import_ignore_interval.isdigit() else 0)
@@ -136,21 +195,21 @@ def import_session_history(import_db, monitor_db, old_server_id, new_server_id, 
                 key_dict['server_id'] = session_history.pop('server_id')
                 key_dict['rating_key'] = session_history.pop('rating_key')
                 key_dict['user_id'] = session_history.pop('user_id')
-                result = monitor_db.upsert('session_history', key_dict=key_dict, value_dict=session_history)
+                result = tautulli_db.upsert('session_history', key_dict=key_dict, value_dict=session_history)
                 if result == 'insert':
-                    new_session_history_id = monitor_db.last_insert_id()
+                    new_session_history_id = tautulli_db.last_insert_id()
                     session_history_lookup[old_session_history_id] = new_session_history_id
 
         query = 'SELECT id, reference_id FROM session_history WHERE server_id = %s' % new_server_id
-        session_history_result = monitor_db.select(query)
+        session_history_result = tautulli_db.select(query)
         for session_history in session_history_result:
             key_dict = {'id': session_history.pop('id')}
             if session_history['reference_id'] in session_history_lookup:
                 session_history['reference_id'] = session_history_lookup[session_history['reference_id']]
-                result = monitor_db.upsert('session_history', key_dict=key_dict, value_dict=session_history)
+                result = tautulli_db.upsert('session_history', key_dict=key_dict, value_dict=session_history)
 
-        import_session_history_media_info(import_db, monitor_db, old_server_id, new_server_id, session_history_lookup)
-        import_session_history_metadata(import_db, monitor_db, old_server_id, new_server_id, session_history_lookup)
+        import_session_history_media_info(import_db, tautulli_db, old_server_id, new_server_id, session_history_lookup)
+        import_session_history_metadata(import_db, tautulli_db, old_server_id, new_server_id, session_history_lookup)
 
         logger.info(u"Tautulli Importer :: session_history imported.")
 
@@ -161,7 +220,7 @@ def import_session_history(import_db, monitor_db, old_server_id, new_server_id, 
         raise Exception('Session History Import failed: %s' % e)
 
 
-def import_session_history_media_info(import_db, monitor_db, old_server_id, new_server_id, session_history_lookup):
+def import_session_history_media_info(import_db, tautulli_db, old_server_id, new_server_id, session_history_lookup):
     logger.info(u"Tautulli Importer :: Importing session_history_media_info table for ServerID: %s" % old_server_id)
 
     try:
@@ -175,7 +234,7 @@ def import_session_history_media_info(import_db, monitor_db, old_server_id, new_
                     "INSERT INTO session_history_media_info (" + ", ".join(session_history_media_info.keys()) + ")" +
                     " VALUES (" + ", ".join(["?"] * len(session_history_media_info.keys())) + ")"
                 )
-                monitor_db.action(query, list(session_history_media_info.values()))
+                tautulli_db.action(query, list(session_history_media_info.values()))
 
         logger.info(u"Tautulli Importer :: session_history_media_info imported.")
 
@@ -186,7 +245,7 @@ def import_session_history_media_info(import_db, monitor_db, old_server_id, new_
         raise Exception('Session History Media Info Import failed: %s' % e)
 
 
-def import_session_history_metadata(import_db, monitor_db, old_server_id, new_server_id, session_history_lookup):
+def import_session_history_metadata(import_db, tautulli_db, old_server_id, new_server_id, session_history_lookup):
     logger.info(u"Tautulli Importer :: Importing session_history_metadata table for ServerID: %s" % old_server_id)
 
     try:
@@ -201,7 +260,7 @@ def import_session_history_metadata(import_db, monitor_db, old_server_id, new_se
                     "INSERT INTO session_history_metadata (" + ", ".join(session_history_metadata.keys()) + ")" +
                     " VALUES (" + ", ".join(["?"] * len(session_history_metadata.keys())) + ")"
                 )
-                monitor_db.action(query, list(session_history_metadata.values()))
+                tautulli_db.action(query, list(session_history_metadata.values()))
 
         logger.info(u"Tautulli Importer :: session_history_metadata imported.")
 
@@ -212,7 +271,7 @@ def import_session_history_metadata(import_db, monitor_db, old_server_id, new_se
         raise Exception('Session History Metadata Import failed: %s' % e)
 
 
-def import_library_sections(import_db, monitor_db, old_server_id, new_server_id):
+def import_library_sections(import_db, tautulli_db, old_server_id, new_server_id):
     logger.info(u"Tautulli Importer :: Importing library_sections table for ServerID: %s" % old_server_id)
 
     try:
@@ -224,7 +283,7 @@ def import_library_sections(import_db, monitor_db, old_server_id, new_server_id)
             key_dict = {}
             key_dict['server_id'] = library_section.pop('server_id')
             key_dict['section_id'] = library_section.pop('section_id')
-            result = monitor_db.upsert('library_sections', key_dict=key_dict, value_dict=library_section)
+            result = tautulli_db.upsert('library_sections', key_dict=key_dict, value_dict=library_section)
 
         logger.info(u"Tautulli Importer :: library_sections imported.")
 
@@ -235,7 +294,7 @@ def import_library_sections(import_db, monitor_db, old_server_id, new_server_id)
         raise Exception('Library Sections Import failed: %s' % e)
 
 
-def import_recently_added(import_db, monitor_db, old_server_id, new_server_id):
+def import_recently_added(import_db, tautulli_db, old_server_id, new_server_id):
     logger.info(u"Tautulli Importer :: Importing recently_added table for ServerID: %s" % old_server_id)
 
     try:
@@ -248,7 +307,7 @@ def import_recently_added(import_db, monitor_db, old_server_id, new_server_id):
             key_dict['server_id'] = recently_added.pop('server_id')
             key_dict['rating_key'] = recently_added.pop('rating_key')
             key_dict['added_at'] = recently_added.pop('added_at')
-            result = monitor_db.upsert('recently_added', key_dict=key_dict, value_dict=recently_added)
+            result = tautulli_db.upsert('recently_added', key_dict=key_dict, value_dict=recently_added)
 
         logger.info(u"Tautulli Importer :: recently_added imported.")
 
@@ -259,7 +318,7 @@ def import_recently_added(import_db, monitor_db, old_server_id, new_server_id):
         raise Exception('Recently Added Import failed: %s' % e)
 
 
-def import_themoviedb_lookup(import_db, monitor_db, old_server_id, new_server_id):
+def import_themoviedb_lookup(import_db, tautulli_db, old_server_id, new_server_id):
     logger.info(u"Tautulli Importer :: Importing recently_added_lookup table for ServerID: %s" % old_server_id)
 
     try:
@@ -271,7 +330,7 @@ def import_themoviedb_lookup(import_db, monitor_db, old_server_id, new_server_id
             key_dict = {}
             key_dict['server_id'] = themoviedb_lookup.pop('server_id')
             key_dict['rating_key'] = themoviedb_lookup.pop('rating_key')
-            result = monitor_db.upsert('themoviedb_lookup', key_dict=key_dict, value_dict=themoviedb_lookup)
+            result = tautulli_db.upsert('themoviedb_lookup', key_dict=key_dict, value_dict=themoviedb_lookup)
 
         logger.info(u"Tautulli Importer :: themoviedb_lookup imported.")
 
@@ -282,7 +341,7 @@ def import_themoviedb_lookup(import_db, monitor_db, old_server_id, new_server_id
         raise Exception('TheMovieDB Lookup Import failed: %s' % e)
 
 
-def import_tvmaze_lookup(import_db, monitor_db, old_server_id, new_server_id):
+def import_tvmaze_lookup(import_db, tautulli_db, old_server_id, new_server_id):
     logger.info(u"Tautulli Importer :: Importing tvmaze_lookup table for ServerID: %s" % old_server_id)
 
     try:
@@ -294,7 +353,7 @@ def import_tvmaze_lookup(import_db, monitor_db, old_server_id, new_server_id):
             key_dict = {}
             key_dict['server_id'] = tvmaze_lookup.pop('server_id')
             key_dict['rating_key'] = tvmaze_lookup.pop('rating_key')
-            result = monitor_db.upsert('tvmaze_lookup', key_dict=key_dict, value_dict=tvmaze_lookup)
+            result = tautulli_db.upsert('tvmaze_lookup', key_dict=key_dict, value_dict=tvmaze_lookup)
 
         logger.info(u"Tautulli Importer :: tvmaze_lookup imported.")
 
@@ -305,7 +364,7 @@ def import_tvmaze_lookup(import_db, monitor_db, old_server_id, new_server_id):
         raise Exception('TVMaze Lookup Import failed: %s' % e)
 
 
-def import_newsletters(import_db, monitor_db, notifier_lookup):
+def import_newsletters(import_db, tautulli_db, notifier_lookup):
     logger.info(u"Tautulli Importer :: Importing Newsletters table...")
 
     try:
@@ -322,7 +381,8 @@ def import_newsletters(import_db, monitor_db, notifier_lookup):
             incl_servers = []
             for server_id in newsletter_config['incl_servers']:
                 result = import_db.execute('SELECT pms_identifier FROM servers WHERE id = %s' % server_id).fetchone()
-                incl_servers.append(plexpy.PMS_SERVERS.get_server_by_identifier(result['pms_identifier']).CONFIG.ID)
+                result2 = tautulli_db.select_single('SELECT id FROM servers WHERE pms_identifier = ?', args=[result['pms_identifier']])
+                incl_servers.append(result2['id'])
             newsletter_config['incl_servers'] = incl_servers
 
             incl_libraries = []
@@ -332,7 +392,8 @@ def import_newsletters(import_db, monitor_db, notifier_lookup):
                         '  JOIN servers ON library_sections.server_id = servers.id ' \
                         ' WHERE library_sections.id = %s' % library_id
                 result = import_db.execute(query).fetchone()
-                new_server_id = plexpy.PMS_SERVERS.get_server_by_identifier(result['pms_identifier']).CONFIG.ID
+                result2 = tautulli_db.select_single('SELECT id FROM servers WHERE pms_identifier = ?', args=[result['pms_identifier']])
+                new_server_id = result2['id']
                 lib_id = libraries.get_section_index(new_server_id, result['section_id'])
                 if lib_id:
                     incl_libraries.append(lib_id)
@@ -349,7 +410,7 @@ def import_newsletters(import_db, monitor_db, notifier_lookup):
             key_dict['agent_id'] = newsletter.pop('agent_id')
             key_dict['newsletter_config'] = newsletter.pop('newsletter_config')
 
-            result = monitor_db.upsert('newsletters', key_dict=key_dict, value_dict=newsletter)
+            result = tautulli_db.upsert('newsletters', key_dict=key_dict, value_dict=newsletter)
 
         logger.info(u"Tautulli Importer :: Newsletters imported.")
 
@@ -360,7 +421,7 @@ def import_newsletters(import_db, monitor_db, notifier_lookup):
         raise Exception('Newsletters Import failed: %s' % e)
 
 
-def import_notifiers(import_db, monitor_db):
+def import_notifiers(import_db, tautulli_db):
     logger.info(u"Tautulli Importer :: Importing Notifiers table...")
 
     try:
@@ -373,10 +434,10 @@ def import_notifiers(import_db, monitor_db):
             key_dict['agent_id'] = notifiers.pop('agent_id')
             key_dict['friendly_name'] = notifiers.pop('friendly_name')
             key_dict['notifier_config'] = notifiers.pop('notifier_config')
-            result = monitor_db.upsert('notifiers', key_dict=key_dict, value_dict=notifiers)
+            result = tautulli_db.upsert('notifiers', key_dict=key_dict, value_dict=notifiers)
             if result == 'insert':
-                new_notifier_id = monitor_db.last_insert_id()
-                import_notify_log(import_db, monitor_db, old_notifier_id, new_notifier_id)
+                new_notifier_id = tautulli_db.last_insert_id()
+                import_notify_log(import_db, tautulli_db, old_notifier_id, new_notifier_id)
             else:
                 args = []
                 query = 'SELECT id FROM notifiers WHERE '
@@ -384,7 +445,7 @@ def import_notifiers(import_db, monitor_db):
                     query += key + ' = ? AND '
                     args.append(value)
                 query = query.rstrip(' AND ')
-                result = monitor_db.select_single(query, args)
+                result = tautulli_db.select_single(query, args)
                 new_notifier_id = result['id']
             notifiers_lookup[old_notifier_id] = new_notifier_id
 
@@ -398,7 +459,7 @@ def import_notifiers(import_db, monitor_db):
         raise Exception('Notifiers Import failed: %s' % e)
 
 
-def import_notify_log(import_db, monitor_db, old_notifier_id, new_notifier_id):
+def import_notify_log(import_db, tautulli_db, old_notifier_id, new_notifier_id):
     logger.info(u"Tautulli Importer :: Importing Notifier_log table entries for notifier ID %s" % old_notifier_id)
 
     try:
@@ -411,7 +472,7 @@ def import_notify_log(import_db, monitor_db, old_notifier_id, new_notifier_id):
                     "INSERT INTO notify_log (" + ", ".join(notify_log.keys()) + ")" +
                     " VALUES (" + ", ".join(["?"] * len(notify_log.keys())) + ")"
             )
-            monitor_db.action(query, list(notify_log.values()))
+            tautulli_db.action(query, list(notify_log.values()))
 
         logger.info(u"Tautulli Importer :: Notify_log imported for notifier ID %s." % old_notifier_id)
 
