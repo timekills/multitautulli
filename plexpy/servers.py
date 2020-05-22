@@ -124,11 +124,13 @@ class plexServers(object):
         for server in self.servers:
             if int(server_id) == server.CONFIG.ID:
                 return server
+        return None
 
     def get_server_by_identifier(self, pms_identifier):
         for server in self.servers:
             if pms_identifier == server.CONFIG.PMS_IDENTIFIER:
                 return server
+        return None
 
     def get_server_ids(self):
         server_ids = []
@@ -306,7 +308,7 @@ class plexServer(object):
             self.initialize_scheduler()
 
     def shutdown(self):
-        if self.PLEX_SERVER_UP:
+        if self.PLEX_SERVER_UP is not None:
             logger.info(u"Tautulli Servers :: %s: Stopping Server Monitoring." % self.CONFIG.PMS_NAME)
             self.server_shutdown = True
             self.WS.shutdown()
@@ -381,7 +383,7 @@ class plexServer(object):
 
     def get_server_status(self):
         server_status = {
-            'server_id': self.CONFIG.ID,
+            'id': self.CONFIG.ID,
             'pms_name': self.CONFIG.PMS_NAME,
             'sessions': [],
             'stream_count': '',
@@ -402,13 +404,13 @@ class plexServer(object):
             0 - Server not enabled
             1 - Server enabled and functioning
             2 - Token not valid
-            3 - Server not connected
+            3 - Monitoring not running
             4 - Server is down
         """
         server_status['server_status'] = (0 if not self.CONFIG.PMS_IS_ENABLED else
                                           1 if self.WS_CONNECTED else
                                           2 if not self.PLEXTV or not self.PLEXTV.is_validated else
-                                          3 if not self.WS_CONNECTED else
+                                          3 if self.PLEX_SERVER_UP is None else
                                           4
                                           )
 

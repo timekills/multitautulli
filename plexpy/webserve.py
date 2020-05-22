@@ -373,6 +373,28 @@ class WebInterface(object):
         else:
             return {'result': 'error', 'message': 'Flush sessions failed.'}
 
+    ##### Servers #####
+
+    @cherrypy.expose
+    @requireAuth(member_of("admin"))
+    @cherrypy.tools.json_out()
+    def start_server(self, server_id=None, **kwargs):
+        if server_id:
+            server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
+            if server:
+                server.start()
+        return {'success': True}
+
+    @cherrypy.expose
+    @requireAuth(member_of("admin"))
+    @cherrypy.tools.json_out()
+    def stop_server(self, server_id=None, **kwargs):
+        if server_id:
+            server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
+            if server:
+                server.shutdown()
+        return {'success': True}
+
     ##### Libraries #####
 
     @cherrypy.expose

@@ -402,26 +402,32 @@ servers_table_options = {
                         t = "far fa-circle ";
                         c = "White";
                         sstt = "Server Disabled";
+                        cmd = ""
                         break;
                       case 1:
                         c = "Green";
-                        sstt = "Server Up";
+                        sstt = "Server Up<br/>Click to Stop Monitoring";
+                        cmd = "stop"
                         break;
                       case 2:
                         c = "Purple";
                         sstt = "Server Token Not Valid";
+                        cmd = ""
                         break;
                       case 3:
                         c = "Yellow";
-                        sstt = " Monitoring Not Connected";
+                        sstt = "Monitor Not Running<br/>Click to Start";
+                        cmd = "start"
                         break;
                       case 4:
                         c = "Red";
-                        sstt = "Server Down";
+                        sstt = "Server Down<br/>Click to Stop Monitoring";
+                        cmd = "stop"
                         break;
                       default:
                     }
-                    $(td).html('<span style="color: ' + c + ';" class="toggle-left trigger-tooltip" data-toggle="tooltip" data-placement="top" title="' + sstt + '"><i class="' + t + s + '"></i></span>');
+                    html = '<span style="color: ' + c + ';" class="toggle-left trigger-tooltip server_status" data-server_id="' + rowData['id'] + '" data-clickcmd="' + cmd + '" data-html="true" data-toggle="tooltip" data-placement="top" title="' + sstt + '"><i class="' + t + s + '"></i></span>';
+                    $(td).html(html);
                 }
             },
             "className": "center",
