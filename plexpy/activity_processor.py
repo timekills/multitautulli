@@ -139,7 +139,6 @@ class ActivityProcessor(object):
                 return True
 
     def write_session_history(self, session=None, import_metadata=None, is_import=False, import_ignore_interval=0):
-        section_id = session['section_id'] if not is_import else import_metadata['section_id']
         server_name = plexpy.PMS_SERVERS.get_server_by_id(session['server_id']).CONFIG.PMS_NAME
 
         library_id = plexpy.libraries.get_section_index(session['server_id'], session['section_id'])
@@ -230,7 +229,7 @@ class ActivityProcessor(object):
                 # Fetch metadata first so we can return false if it fails
                 if not is_import:
                     logger.debug(u"Tautulli ActivityProcessor :: %s: Fetching metadata for item ratingKey %s" % (server_name, session['rating_key']))
-                    metadata = self.server.PMSCONNECTION.get_metadata_details(rating_key=str(session['rating_key']))
+                    metadata = self.server.get_metadata_details(rating_key=str(session['rating_key']))
                     if not metadata:
                         return False
                     else:

@@ -56,7 +56,7 @@ class ActivityHandler(object):
         return None
 
     def get_live_session(self):
-        session_list = self.server.PMSCONNECTION.get_current_activity()
+        session_list = self.server.get_current_activity()
 
         if session_list:
             for session in session_list['sessions']:
@@ -350,7 +350,7 @@ class TimelineHandler(object):
         return None
 
     def get_metadata(self):
-        metadata = self.server.PMSCONNECTION.get_metadata_details(self.get_rating_key())
+        metadata = self.server.get_metadata_details(self.get_rating_key())
 
         if metadata:
             return metadata
@@ -556,7 +556,7 @@ def clear_recently_added_queue(rating_key, title, server_name, server, queue):
 
 def on_created(server, rating_key, **kwargs):
     logger.debug(u"Tautulli TimelineHandler :: %s: Library item %s added to Plex." % (server.CONFIG.PMS_NAME, str(rating_key)))
-    metadata = server.PMSCONNECTION.get_metadata_details(rating_key)
+    metadata = server.get_metadata_details(rating_key)
 
     if metadata:
         notify = True

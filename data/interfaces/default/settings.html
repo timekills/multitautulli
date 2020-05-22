@@ -53,6 +53,7 @@
                 <li role="presentation"><a href="#tabs-general" aria-controls="tabs-general" role="tab" data-toggle="tab">General</a></li>
                 <li role="presentation"><a href="#tabs-homepage" aria-controls="tabs-homepage" role="tab" data-toggle="tab">Homepage</a></li>
                 <li role="presentation"><a href="#tabs-web_interface" aria-controls="tabs-web_interface" role="tab" data-toggle="tab">Web Interface</a></li>
+                <li role="presentation"><a href="#tabs-PlexTV_accounts" aria-controls="tabs-PlexTV_accounts" role="tab" data-toggle="tab">Plex.TV Accounts</a></li>
                 <li role="presentation"><a href="#tabs-plex_media_servers" aria-controls="tabs-plex_media_servers" role="tab" data-toggle="tab">Plex Media Servers</a></li>
                 <li role="presentation"><a href="#tabs-notifications" aria-controls="tabs-notifications" role="tab" data-toggle="tab">Notifications & Newsletters</a></li>
                 <li role="presentation"><a href="#tabs-notification_agents" aria-controls="tabs-notification_agents" role="tab" data-toggle="tab">Notification Agents</a></li>
@@ -661,6 +662,43 @@
 
                     </div>
 
+                    <div role="tabpanel" class="tab-pane" id="tabs-PlexTV_accounts">
+
+                        <div class="padded-header">
+                            <h3>Plex.TV Account Management</h3>
+                        </div>
+
+                        <div id="plextv-accounts-table">
+                            <div class='container-fluid'>
+                                <div class="table-card-header">
+                                    <div class="header-bar">
+                                        <span id="accounts-xml"><i class="fa fa-users"></i>&nbsp;Accounts</span>
+                                    </div>
+                                    <div class="button-bar">
+                                        <button class="btn btn-dark" id="refresh-account-list"><i class="fa fa-refresh"></i> Refresh</button>
+                                        <button class="btn btn-dark" id="sign-in-plex"><i class="fa fa-plus"></i> Fetch</button>
+                                    </div>
+                                </div>
+                                <div class="table-card-back">
+                                    <table class="config-accounts-table display" id="config-accounts-table">
+                                        <thead>
+                                            <tr>
+                                                <th class="delete-account"></th>
+                                                <th class="username">User Name</th>
+                                                <th class="isAdmin">Admin</th>
+                                                <th class="usertoken">Token</th>
+                                           </tr>
+                                        </thead>
+
+                                        <tbody>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <br>
+                        </div>
+                    </div>
+
                     <div role="tabpanel" class="tab-pane" id="tabs-plex_media_servers">
 
                         <div class="padded-header">
@@ -674,9 +712,7 @@
                                         <span id="servers-xml"><i class="fa fa-server"></i>&nbsp;Servers</span>
                                     </div>
                                     <div class="button-bar">
-                                        <div class="btn-group">
-                                            <button class="btn btn-dark refresh-servers-button" id="refresh-servers-list"><i class="fa fa-refresh"></i> Refresh Servers</button>
-                                        </div>
+                                        <button class="btn btn-dark refresh-servers-button" id="refresh-servers-list"><i class="fa fa-refresh"></i> Refresh</button>
                                     </div>
                                 </div>
                                 <div class="table-card-back">
@@ -684,7 +720,7 @@
                                         <thead>
                                             <tr>
                                                 <th class="status_tooltip"></th>
-                                                <th class="pms_is_enabled">Enabled</th>
+                                                <th class="pms_is_enabled">Enable</th>
                                                 <th class="pms_name">Server</th>
                                                 <th class="pms_ip">Hostname</th>
                                                 <th class="pms_port">Port</th>
@@ -775,28 +811,6 @@
                             </label>
                             <p class="help-block">Activate the rclone mount monitoring feature. With this activated, you can set the rclone mount monitoring parameters in the server configuration.</p>
                         </div>
-
-                        <div class="padded-header">
-                            <h3>Plex.tv Authentication</h3>
-                        </div>
-
-                        <div class="form-group has-feedback">
-                            <label for="pms_token">Plex.tv Account Token</label>
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="input-group">
-                                        <input type="text" class="form-control" id="pms_token" name="pms_token" value="${config['pms_token']}" data-parsley-trigger="change" data-parsley-errors-container="#pms_token_error" required>
-                                        <span class="input-group-btn">
-                                            <button id="sign-in-plex" class="btn btn-form" type="button">Fetch Token</button>
-                                        </span>
-                                    </div>
-                                    <span class="form-control-feedback" id="token_verify" aria-hidden="true" style="right: 80px;"></span>
-                                </div>
-                                <div id="pms_token_error" class="alert alert-danger settings-alert" role="alert"></div>
-                            </div>
-                            <p class="help-block">Token for Plex.tv authentication.</p>
-                        </div>
-                        <input type="hidden" id="pms_uuid" name="pms_uuid" value="${config['pms_uuid']}">
 
                         <p><input type="button" class="btn btn-bright save-button" value="Save" data-success="Changes saved successfully"></p>
                     </div>
@@ -1369,6 +1383,7 @@
         </div>
     </div>
 </div>
+<div id="plextv-account-modal" class="modal fade wide" tabindex="-1" role="dialog" aria-labelledby="plextv-account-modal"></div>
 <div id="server-config-modal" class="modal fade wide" tabindex="-1" role="dialog" aria-labelledby="server-config-modal"></div>
 <div id="notifier-config-modal" class="modal fade wide" tabindex="-1" role="dialog" aria-labelledby="notifier-config-modal"></div>
 <div id="newsletter-config-modal" class="modal fade wide" tabindex="-1" role="dialog" aria-labelledby="newsletter-config-modal"></div>
@@ -1659,6 +1674,7 @@
 <script src="${http_root}js/dataTables.bootstrap.min.js"></script>
 <script src="${http_root}js/dataTables.bootstrap.pagination.js"></script>
 <script src="${http_root}js/tables/servers_table.js${cache_param}"></script>
+<script src="${http_root}js/tables/accounts_table.js${cache_param}"></script>
 <script>
     function getConfigurationTable() {
         $.ajax({
@@ -1686,6 +1702,60 @@
             }
         });
     }
+
+    $('#refresh-account-list').on('click', function () {
+        $('#refresh-account-list > .fa-refresh').addClass('fa-spin');
+        document.getElementById('config-accounts-table').dataset.loader = 'Refreshing Accounts...';
+        doAjaxCall('refresh_accounts_table', '#config-accounts-table', '', true, true,
+                function refreshAccountsTable() {
+                    config_accounts_table.ajax.reload();
+                    config_accounts_table.draw;
+                    $('#refresh-account-list > .fa-refresh').removeClass('fa-spin');
+                }
+        );
+        return false;
+    });
+
+    function getAccountsTable() {
+        accounts_table_options.ajax = {url: 'get_accounts_table'};
+        accounts_table_options.order = [[1, "asc"]];
+        config_accounts_table = $('#config-accounts-table').DataTable(accounts_table_options);
+        config_accounts_table.draw;
+    }
+
+    // Load PlexTV account modal
+    $('#config-accounts-table tbody').on('click', 'tr .delete-account', function () {
+        var token = config_accounts_table.row(this).data().usertoken;
+        showMsg('<i class="fa fa-refresh fa-spin"></i>&nbsp; Loading PlexTV Account Configuration', false);
+        $.ajax({
+            url: 'get_plextv_account_modal',
+            data: { token: token },
+            cache: false,
+            async: true,
+            complete: function (xhr, status) {
+                $("#plextv-account-modal").html(xhr.responseText).modal('show');
+                showMsg('<i class="fa fa-check"></i> PlexTV Account Configuration Loaded', false, true, 2000);
+            }
+        });
+    });
+
+    $('#config-accounts-table tbody').on('change', 'tr .isAdmin', function () {
+        var checked = this.checked;
+        var token = this.dataset.token;
+        $.ajax({
+            url: 'set_account_admin',
+            data: { token: token,
+                    checked: checked
+                   },
+            cache: false,
+            async: true,
+            complete: function (xhr, status) {
+                config_servers_table.ajax.reload();
+                config_servers_table.draw;
+            }
+        });
+        return false;
+    });
 
     $('#refresh-servers-list').on('click', function () {
         $('#refresh-servers-list > .fa-refresh').addClass('fa-spin');
@@ -1728,20 +1798,7 @@
     // Load server config modal
     $('#config-servers-table tbody').on('click', 'tr .config-settings', function () {
         var server_id = this.parentNode.id;
-        if (config_servers_table.row(this).data().pms_is_deleted) {
-            var msg = 'This server is in deleted status. Would you like to un-delete it?';
-            var url = 'undelete_server';
-            confirmAjaxCall(url, msg, { server_id: server_id }, null,
-                function undeleteServerCallback(result) {
-                    if (result.result == 'success') {
-                        config_servers_table.ajax.reload();
-                        getLibrarySections();
-                    }
-                }
-            );
-        } else {
-            loadServerConfig(server_id);
-        }
+        loadServerConfig(server_id);
     });
 
     function getNotifiersTable() {
@@ -1864,6 +1921,23 @@
         });
     }
 
+    // Alert the user that their changes require a restart.
+    function postSaveChecks() {
+        if (authChanged || httpChanged || directoryChanged) {
+          $('#restart-modal').modal('show');
+        }
+        $("#http_hashed_password").val($("#http_hash_password").is(":checked") ? 1 : 0);
+        getConfigurationTable();
+        getAccountsTable();
+        getServersTable();
+        getLibrarySections();
+        getSchedulerTable();
+        getNotifiersTable();
+        getNewslettersTable();
+        getMobileDevicesTable();
+        settingsChanged = false;
+    }
+
 $(document).ready(function() {
 
     // Javascript to enable link to tab
@@ -1883,7 +1957,6 @@ $(document).ready(function() {
     serversChanged = false;
     authChanged = false;
     httpChanged = false;
-    plexTokenChanged = false;
     directoryChanged = false;
 
     // Alert if leaving the page without saving changes to settings
@@ -1892,25 +1965,6 @@ $(document).ready(function() {
         if (settingsChanged) {
             return "Settings were changed without saving!";
         }
-    }
-
-    // Alert the user that their changes require a restart.
-    function postSaveChecks() {
-        if (plexTokenChanged) {
-            window.location.href = '/settings#tab_tabs-plex_media_servers';
-        }
-        if (authChanged || httpChanged || directoryChanged) {
-          $('#restart-modal').modal('show');
-        }
-        $("#http_hashed_password").val($("#http_hash_password").is(":checked") ? 1 : 0);
-        getConfigurationTable();
-        getServersTable();
-        getLibrarySections();
-        getSchedulerTable();
-        getNotifiersTable();
-        getNewslettersTable();
-        getMobileDevicesTable();
-        settingsChanged = false;
     }
 
     var configForm = $("#configUpdate");
@@ -1988,6 +2042,7 @@ $(document).ready(function() {
 
     advancedSettings();
     getConfigurationTable();
+    getAccountsTable();
     getServersTable();
     getLibrarySections();
     getSchedulerTable();
@@ -2088,18 +2143,33 @@ $(document).ready(function() {
     function OAuthPreFunction() {
         $("#token_verify").html('<i class="fa fa-refresh fa-spin"></i>').fadeIn('fast');
     }
+
     function OAuthSuccessCallback(authToken) {
-        $("#pms_token").val(authToken);
-        $("#pms_uuid").val(x_plex_headers['X-Plex-Client-Identifier']);
-        $("#token_verify").html('<i class="fa fa-check"></i>').fadeIn('fast');
-        plexTokenChanged = true;
+        $.ajax({
+            url: 'add_plextv_account',
+            data: {token: authToken},
+            cache: false,
+            async: true,
+            complete: function(xhr, status) {
+                $('#sign-in-plex > .fa-plus').removeClass('fa-refresh fa-spin');
+                showMsg('<i class="fa fa-check"></i> PlexTV Account Added or Updated.', false, true, 2000);
+                getAccountsTable();
+                getServersTable();
+                getLibrarySections();
+            }
+        });
     }
+
     function OAuthErrorCallback() {
         $("#token_verify").html('<i class="fa fa-close"></i>').fadeIn('fast');
+        showMsg('<i class="fa fa-check"></i> PlexTV Account error.', false, true, 2000);
     }
 
     $('#sign-in-plex').click(function() {
+        $('#sign-in-plex > .fa-plus').addClass('fa-refresh fa-spin');
+        showMsg('<i class="fa fa-refresh fa-spin"></i>&nbsp; Fetching PlexTV Account', false);
         PlexOAuth(OAuthSuccessCallback, OAuthErrorCallback, OAuthPreFunction);
+        return false;
     });
 
     // Load database import modal

@@ -66,8 +66,36 @@ DOCUMENTATION :: END
         servers_table_options.ajax = {url: 'get_server_status'};
         servers_table_options.language.loadingRecords = "Loading Server Status...";
         server_status_table = $('#server-status-table').DataTable(servers_table_options);
-
     }
+
+    // Process click on server status
+    $('#server-status-table tbody').on('click', 'tr .server_status', function () {
+        var server_id = this.dataset.server_id;
+        var cmd = this.dataset.clickcmd;
+        var url = false;
+        switch (cmd) {
+            case "start":
+                url = 'start_server';
+                break;
+            case "stop":
+                url = 'stop_server';
+                break;
+            default:
+                var url = false;
+        }
+        if (url) {
+            $.ajax({
+                url: url,
+                data: { server_id: server_id },
+                cache: false,
+                async: true,
+                complete: function (xhr, status) {
+                }
+            });
+        }
+    });
+
+
     getServerStats()
     setInterval(function () {
         $(".trigger-tooltip").tooltip("hide");

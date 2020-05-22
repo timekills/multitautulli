@@ -85,8 +85,8 @@ class ServerWebSocket(object):
             secure = ''
 
         # Set authentication token (if one is available)
-        if plexpy.CONFIG.PMS_TOKEN:
-            header = ["X-Plex-Token: %s" % plexpy.CONFIG.PMS_TOKEN]
+        if self.server.CONFIG.PMS_TOKEN:
+            header = ["X-Plex-Token: %s" % self.server.CONFIG.PMS_TOKEN]
         else:
             header = []
 
@@ -96,11 +96,16 @@ class ServerWebSocket(object):
         # Try an open the websocket connection
         logger.info(u"Tautulli WebSocket :: %s: Opening %s websocket." % (self.server.CONFIG.PMS_NAME, secure))
         try:
-            self.WS_CONNECTION = create_connection(uri, header=header, timeout=30)
-            logger.info(u"Tautulli WebSocket :: %s: Ready" % self.server.CONFIG.PMS_NAME)
-            self.server.WS_CONNECTED = True
+            if self.server.PLEXTV.is_validated:
+                self.WS_CONNECTION = create_connection(uri, header=header, timeout=30)
+                logger.info(u"Tautulli WebSocket :: %s: Ready" % self.server.CONFIG.PMS_NAME)
+                self.server.WS_CONNECTED = True
         except (websocket.WebSocketException, IOError, Exception) as e:
             logger.error("Tautulli WebSocket :: %s: %s." % (self.server.CONFIG.PMS_NAME, e))
+            if isinstance(e, websocket.WebSocketBadStatusException) and e.status_code == 401:
+                self.ws_shutdown = True
+                self.server.server_shutdown = True
+                self.server.initialize_scheduler()
 
         if self.server.WS_CONNECTED:
             self.on_connect()

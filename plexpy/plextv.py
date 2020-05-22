@@ -17,14 +17,149 @@
 #  along with Tautulli.  If not, see <http://www.gnu.org/licenses/>.
 
 import base64
+import json
+import threading
 
 import plexpy
 from plexpy import helpers
 from plexpy import http_handler
 from plexpy import logger
 from plexpy import users
-from plexpy import pmsconnect
 from plexpy import session
+from plexpy import database
+from plexpy.servers import plexServer
+
+
+class PlexTVaccounts(object):
+
+    def __init__(self):
+        self._accounts = []
+        db = database.MonitorDatabase()
+        result = db.select('SELECT * FROM users WHERE is_plextv = 1')
+        for accountValues in result:
+            account = PlexTV(account=accountValues)
+            self._accounts.append(account)
+
+    @property
+    def accounts(self):
+        return [account for account in self._accounts]
+
+    def __iter__(self):
+        for account in self._accounts:
+            yield account
+
+    def get_account(self, token=None, user_id=None):
+        for account in self._accounts:
+            if token and token == account.token:
+                return account
+            if user_id and user_id == account.user_id:
+                return account
+        return None
+
+    def add_account(self, token=None, is_plextv=False, is_admin=False):
+        new_account = PlexTV(token=token, is_plextv=is_plextv, is_admin=is_admin)
+        existing_account = self.get_account(user_id=new_account.user_id)
+        if existing_account:
+            logger.info("Updating PlexTV Account %s" % existing_account.username)
+            existing_account.reinit()
+            existing_account.is_validated = new_account.is_validated
+            for server in existing_account.servers:
+                server.CONFIG.PMS_TOKEN = existing_account.token
+            existing_account.start_servers()
+            return existing_account
+        else:
+            logger.info("Adding PlexTV Account %s" % new_account.username)
+            self._accounts.append(new_account)
+            new_account.refresh_servers()
+            for owned_server in new_account.servers:
+                for unowned_server in plexpy.PMS_SERVERS.unowned_servers:
+                    if owned_server.CONFIG.PMS_IDENTIFIER == unowned_server.CONFIG.PMS_IDENTIFIER:
+                        plexpy.PMS_SERVERS.unowned_servers.remove(unowned_server)
+            return new_account
+
+    def reinit_account(self, token=None, user_id=None):
+        if token or user_id:
+            account = self.get_account(token=token, user_id=user_id)
+            if account:
+                account.reinit()
+            else:
+                db = database.MonitorDatabase()
+                if token:
+                    where = " AND user_token = %s" % token
+                elif user_id:
+                    where = " AND user_id = %s" % user_id
+                else:
+                    return None
+                query = 'SELECT * FROM users WHERE is_plextv = 1 %s' % where
+                result = db.select_single(query)
+                account = PlexTV(account=result)
+                self._accounts.append(account)
+            return account
+        return None
+
+    def refresh_users(self):
+        for account in self._accounts:
+            account.refresh_users()
+
+    def refresh_servers(self):
+        for account in self._accounts:
+            account.refresh_servers()
+
+    def start_servers(self):
+        for account in self._accounts:
+            account.start_servers()
+
+    def delete_account(self, token=None, user_id=None, keep_history=True):
+        account = self.get_account(token=token, user_id=user_id)
+
+        if account:
+            logger.error(u"Tautulli PlexTV :: Deleting PlexTV Account %s" % account.username)
+            self._accounts.remove(account)
+            db = database.MonitorDatabase()
+            db.action('UPDATE users SET is_plextv = 0 WHERE user_id = ?', [account.user_id])
+
+            servers = account.servers
+            for server in servers:
+                server.delete(keep_history=keep_history)
+                if keep_history:
+                    plexpy.PMS_SERVERS.unowned_servers.append(server)
+                    server.PLEXTV = None
+
+            plexpy.PMS_SERVERS.refresh()
+
+    def get_synced_items(self, machine_id=None, client_id_filter=None, user_id_filter=None,
+                         rating_key_filter=None, sync_id_filter=None, server_id_filter=None):
+        sync_list = []
+        for account in self._accounts:
+            if account.plexpass:
+                result = account.get_synced_items(machine_id=machine_id, client_id_filter=client_id_filter,
+                                                  user_id_filter=user_id_filter, server_id_filter=server_id_filter)
+                if result:
+                    sync_list.append(result)
+        return sync_list
+
+    def delete_sync(self, client_id, sync_id):
+        for account in self._accounts:
+            account.delete_sync(client_id=client_id, sync_id=sync_id)
+
+    def get_plextv_friends(self, output_format=''):
+        results = []
+        for account in self._accounts:
+            result = account.get_plextv_friends(output_format='dict')
+            result['MediaContainer']['@friendlyName'] = account.username
+            results.append(result)
+        if output_format == 'json':
+            results = json.dumps(results)
+        return results
+
+    def get_plextv_user_details(self, output_format=''):
+        results = []
+        for account in self._accounts:
+            result = account.get_plextv_user_details(output_format='dict')
+            results.append(result)
+        if output_format == 'json':
+            results = json.dumps(results)
+        return results
 
 
 class PlexTV(object):
@@ -32,15 +167,52 @@ class PlexTV(object):
     Plex.tv authentication
     """
 
-    def __init__(self, username=None, password=None, token=None, headers=None):
+    def __init__(self, account=None, username=None, password=None, token=None, headers=None, is_admin=None, is_plextv=None):
+        self.token = token
+        self.user_id = None
         self.username = username
         self.password = password
-        self.token = token
         self.headers = headers
-
+        self.is_validated = None
         self.urls = 'https://plex.tv'
         self.timeout = plexpy.CONFIG.PMS_TIMEOUT
         self.ssl_verify = plexpy.CONFIG.VERIFY_SSL_CERT
+        self._servers = []
+
+        db = database.MonitorDatabase()
+        if token:
+            account_details = self.get_plex_account_details()
+            if account_details:
+                self.user_id = account_details['user_id']
+                self.token = account_details.get('user_token', None)
+                self.username = account_details.get('username', None)
+                self.is_validated = True
+
+                account = db.select_single('SELECT * FROM users WHERE user_id = ?', args=[self.user_id])
+                if account:
+                    old_token = account['user_token']
+                else:
+                    account = {}
+                    old_token = None
+                account.update(account_details)
+                if is_plextv:
+                    account['is_plextv'] = 1
+                    account['plexpass'] = int(self.get_plexpass_status())
+                if is_admin:
+                    account['is_admin'] = 1
+                    account['is_allow_sync'] = 1
+                keys_dict = {"user_id": account.pop('user_id')}
+                db.upsert('users', account, keys_dict)
+                account.update(keys_dict)
+
+                if old_token and account['is_plextv'] and old_token != token:
+                    db.action('UPDATE servers set pms_token = ? WHERE pms_token = ?', args=[token, old_token])
+
+        if account:
+            for k, v in account.items():
+                vars(self)[k] = v
+            self.token = account.get('user_token', None)
+            self.username = account.get('username', None)
 
         if self.username is None and self.password is None:
             if not self.token:
@@ -49,22 +221,94 @@ class PlexTV(object):
                     user_data = users.Users()
                     user_tokens = user_data.get_tokens(user_id=session.get_session_user_id())
                     self.token = user_tokens['server_token']
-                else:
-                    self.token = plexpy.CONFIG.PMS_TOKEN
 
             if not self.token:
                 logger.error(u"Tautulli PlexTV :: PlexTV called, but no token provided.")
                 return
 
-        self.http_handler = http_handler.HTTPHandler(urls=self.urls,
-                                                     token=self.token,
-                                                     timeout=self.timeout,
-                                                     ssl_verify=self.ssl_verify,
-                                                     headers=self.headers)
+        if self.is_validated is None:
+            self.is_validated = self.verify_token()
 
-        plexpass = self.get_plexpass_status()
-        plexpy.CONFIG.PMS_PLEXPASS = plexpass
-        plexpy.CONFIG.write()
+        result = db.select('SELECT * FROM servers WHERE pms_token = ?', args=[self.token])
+        for serverValues in result:
+            server = plexServer(serverValues)
+            server.PLEXTV = self
+            self._servers.append(server)
+
+    def set_admin(self, checked=None):
+        self.is_admin = checked
+        db = database.MonitorDatabase()
+        result = db.action('UPDATE users set is_admin = ? WHERE user_id = ?', args=(checked, self.user_id))
+        return True
+
+    @property
+    def servers(self):
+        return self._servers
+
+    def reinit(self):
+        user_details = users.Users().get_details(user_id=self.user_id)
+        if user_details:
+            for k, v in user_details.items():
+                vars(self)[k] = v
+            self.token = user_details['user_token']
+            self.username = user_details['username']
+        self.is_validated = self.verify_token()
+
+    def verify_token(self):
+        account = self.get_plex_account_details()
+        if account:
+            return True
+        else:
+            logger.warn(u"Tautulli PlexTV :: PlexTV account token may be expired for %s" % self.username)
+            return False
+
+    def start_servers(self):
+        for server in self._servers:
+            server.start()
+
+
+    def stop_servers(self):
+        for server in self._servers:
+            server.shutdown()
+
+    def refresh_servers(self):
+        logger.info(u"Tautulli PlexTV :: Requesting Servers refresh for account %s" % self.username)
+        if self.is_validated:
+            thread_list = []
+            new_servers = False
+
+            servers = self.get_servers_list(include_cloud=True, all_servers=False)
+            if not servers:
+                logger.info(u"Tautulli PlexTV :: No Plex Servers Found for account %s" % self.username)
+                return
+
+            for server in servers:
+                pmsServer = next((s for s in self._servers if s.CONFIG.PMS_IDENTIFIER == server['pms_identifier'] ), None)
+
+                if pmsServer:
+                    pmsServer.CONFIG.process_kwargs(server)
+                    if not pmsServer.CONFIG.PMS_IS_DELETED:
+                        t = threading.Thread(target=pmsServer.refresh)
+                        t.start()
+                        thread_list.append(t)
+                else:
+                    new_servers = True
+                    pmsServer = plexServer(server)
+                    self._servers.append(pmsServer)
+                    pmsServer.PLEXTV = self
+                    logger.info(u"Tautulli PlexTV :: %s: Server Discovered for account %s..."
+                                % (pmsServer.CONFIG.PMS_NAME, self.username))
+                    t = threading.Thread(target=pmsServer.refresh)
+                    t.start()
+                    thread_list.append(t)
+            for t in thread_list:
+                t.join()
+            if new_servers:
+                threading.Thread(target=self.refresh_users).start()
+
+    def refresh_users(self):
+        result = users.refresh_users(account=self)
+        return result
 
     def get_plex_auth(self, output_format='raw'):
         uri = '/users/sign_in.xml'
@@ -383,22 +627,22 @@ class PlexTV(object):
                            "username": helpers.get_xml_attr(a, 'username'),
                            "thumb": helpers.get_xml_attr(a, 'thumb'),
                            "email": helpers.get_xml_attr(a, 'email'),
-                           "is_admin": 1,
                            "is_home_user": helpers.get_xml_attr(a, 'home'),
-                           "is_allow_sync": 1,
                            "is_restricted": helpers.get_xml_attr(a, 'restricted'),
                            "filter_all": helpers.get_xml_attr(a, 'filterAll'),
                            "filter_movies": helpers.get_xml_attr(a, 'filterMovies'),
                            "filter_tv": helpers.get_xml_attr(a, 'filterTelevision'),
                            "filter_music": helpers.get_xml_attr(a, 'filterMusic'),
                            "filter_photos": helpers.get_xml_attr(a, 'filterPhotos'),
+                           "user_token": helpers.get_xml_attr(a, 'authToken'),
                            "shared_libraries": [],
-                           }
-            for server in plexpy.PMS_SERVERS:
-                own_details["shared_libraries"].append({"server_id": server.CONFIG.ID,
-                                                        "user_token": helpers.get_xml_attr(a, 'authToken'),
-                                                        "server_token": helpers.get_xml_attr(a, 'authToken'),
-                                                        })
+                           "plexpass": 1 if helpers.get_xml_attr(a.getElementsByTagName('subscription')[0], 'active') == '1' else 0,
+            }
+            for server in self._servers:
+                if server.CONFIG.PMS_TOKEN == self.token:
+                    own_details["shared_libraries"].append({"server_id": server.CONFIG.ID,
+                                                            "server_token": helpers.get_xml_attr(a, 'authToken'),
+                                                            })
 
             users_list.append(own_details)
 
@@ -413,7 +657,6 @@ class PlexTV(object):
                       "username": helpers.get_xml_attr(a, 'title'),
                       "thumb": helpers.get_xml_attr(a, 'thumb'),
                       "email": helpers.get_xml_attr(a, 'email'),
-                      "is_admin": 0,
                       "is_home_user": helpers.get_xml_attr(a, 'home'),
                       "is_allow_sync": helpers.get_xml_attr(a, 'allowSync'),
                       "is_restricted": helpers.get_xml_attr(a, 'restricted'),
@@ -427,8 +670,8 @@ class PlexTV(object):
             users_list.append(friend)
 
         user_map = {}
-        for server in plexpy.PMS_SERVERS:
-            if server.CONFIG.PMS_IS_ENABLED:
+        for server in self._servers:
+            if server.CONFIG.PMS_IS_ENABLED == True and server.CONFIG.PMS_TOKEN == self.token:
                 shared_servers = self.get_plextv_shared_servers(machine_id=server.CONFIG.PMS_IDENTIFIER,
                                                                 output_format='xml')
                 try:
@@ -475,7 +718,7 @@ class PlexTV(object):
 
         synced_items = []
 
-        for server in plexpy.PMS_SERVERS:
+        for server in self._servers:
             if server_id_filter and int(server_id_filter) != server.CONFIG.ID:
                 continue
             if not session.allow_session_server(server.CONFIG.ID):
@@ -701,12 +944,12 @@ class PlexTV(object):
                         'pms_url': 'http://127.0.0.1:32400',
                         'pms_is_remote': '0',
                         'pms_is_cloud': '0',
-                        'pms_token': plexpy.CONFIG.PMS_TOKEN,
+                        'pms_token': self.token,
                         }
         local_machine_identifier = None
         request_handler = http_handler.HTTPHandler(urls='http://127.0.0.1:32400', timeout=1,
-                                                   ssl_verify=False, silent=True)
-        request = request_handler.make_request(uri='/identity', request_type='GET', output_format='xml')
+                                                   ssl_verify=False, silent=True, token=self.token)
+        request = request_handler.make_request(uri='/', request_type='GET', output_format='xml')
         if request:
             xml_head = request.getElementsByTagName('MediaContainer')[0]
             local_machine_identifier = xml_head.getAttribute('machineIdentifier')
@@ -767,11 +1010,23 @@ class PlexTV(object):
                                       'pms_platform': helpers.get_xml_attr(d, 'platform'),
                                       'pms_version': helpers.get_xml_attr(d, 'productVersion'),
                                       'pms_is_cloud': int(is_cloud or 0),
-                                      'pms_token': plexpy.CONFIG.PMS_TOKEN,
+                                      'pms_token': self.token,
                                       }
 
-                            pms_connect = pmsconnect.PmsConnect(url=server['pms_uri'], serverName=server['pms_name'])
-                            pms_ssl_pref = pms_connect.get_server_pref('secureConnections')
+                            request_handler = http_handler.HTTPHandler(urls=server['pms_uri'],
+                                                                       token=self.token,
+                                                                       timeout=self.timeout)
+                            prefs = request_handler.make_request(uri='/:/prefs',
+                                                                 request_type='GET',
+                                                                 output_format='xml')
+                            pms_ssl_pref = 0
+                            if prefs:
+                                xml_head = prefs.getElementsByTagName('Setting')
+                                for a in xml_head:
+                                    if helpers.get_xml_attr(a, 'id') == 'secureConnections':
+                                        pms_ssl_pref = helpers.get_xml_attr(a, 'value')
+                                        break
+
                             if pms_ssl_pref:
                                 server['pms_ssl_pref'] = int(pms_ssl_pref)
 
@@ -812,7 +1067,7 @@ class PlexTV(object):
         if subscription and helpers.get_xml_attr(subscription[0], 'active') == '1':
             return True
         else:
-            logger.debug(u"Tautulli PlexTV :: Plex Pass subscription not found.")
+            logger.debug(u"Tautulli PlexTV :: Plex Pass subscription not found for %s" % self.username)
             return False
 
     def get_devices_list(self):
@@ -871,7 +1126,7 @@ class PlexTV(object):
             return None
 
         for a in xml_head:
-            account_details = {"user_id": helpers.get_xml_attr(a, 'id'),
+            account_details = {"user_id": int(helpers.get_xml_attr(a, 'id')),
                                "username": helpers.get_xml_attr(a, 'username'),
                                "thumb": helpers.get_xml_attr(a, 'thumb'),
                                "email": helpers.get_xml_attr(a, 'email'),
@@ -913,8 +1168,20 @@ class PlexTV(object):
             server['pms_is_remote'] = int(not int(conn['local']))
             server['pms_ssl'] = (1 if conn['protocol'] == 'https' else 0)
 
-            pms_connect = pmsconnect.PmsConnect(url=conn['uri'])
-            server['pms_ssl_pref'] = int(pms_connect.get_server_pref('secureConnections'))
+            request_handler = http_handler.HTTPHandler(urls=conn['uri'],
+                                                       token=self.token,
+                                                       timeout=self.timeout)
+            prefs = request_handler.make_request(uri='/:/prefs',
+                                                 request_type='GET',
+                                                 output_format='xml')
+            pms_ssl_pref = 0
+            if prefs:
+                xml_head = prefs.getElementsByTagName('Setting')
+                for a in xml_head:
+                    if helpers.get_xml_attr(a, 'id') == 'secureConnections':
+                        pms_ssl_pref = helpers.get_xml_attr(a, 'value')
+                        break
+            server['pms_ssl_pref'] = pms_ssl_pref
 
             scheme = ('https' if server['pms_ssl'] else 'http')
             pms_url = '{scheme}://{hostname}:{port}'.format(scheme=scheme,

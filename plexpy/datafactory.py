@@ -1573,7 +1573,7 @@ class DataFactory(object):
         if mapping:
             logger.info(u"Tautulli DataFactory :: Updating metadata in the database.")
             for old_key, new_key in mapping.items():
-                metadata = server.PMSCONNECTION.get_metadata_details(new_key)
+                metadata = server.get_metadata_details(new_key)
 
                 if metadata:
                     if metadata['media_type'] == 'show' or metadata['media_type'] == 'artist':
@@ -1834,7 +1834,7 @@ class DataFactory(object):
         server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
         monitor_db = database.MonitorDatabase()
 
-        metadata = server.PMSCONNECTION.get_metadata_details(rating_key)
+        metadata = server.get_metadata_details(rating_key)
 
         keys = { 'server_id': server_id,
                  'rating_key': metadata['rating_key'],

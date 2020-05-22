@@ -64,6 +64,10 @@ DOCUMENTATION :: END
                     <p class="help-block">Uncheck this if you do not want to keep any history on this user's activity.</p>
                 </div>
                 <div class="input-group">
+                % if data['is_admin']:
+                    <label for="allow_guest">Admin Account</label>
+                    <p class="help-block">This user is an Administrator and has full access to all functions.</p>
+                % else:
                     <label for="allow_guest">Guest Access Level</label>
                     <select class="form-control" id="allow_guest" name="allow_guest">
                         % for value, label in GUEST_ACCESS_LEVELS.items():
@@ -71,6 +75,7 @@ DOCUMENTATION :: END
                         % endfor
                     </select>
                     <p class="help-block">Select the user's guest access level to Tautulli.</p>
+                % endif
                 </div>
                 % if data['user_id']:
                 <div class="form-group">

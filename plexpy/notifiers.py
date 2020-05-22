@@ -58,7 +58,6 @@ from plexpy import database
 from plexpy import helpers
 from plexpy import logger
 from plexpy import mobile_app
-from plexpy import pmsconnect
 from plexpy import request
 from plexpy import users
 
@@ -1688,7 +1687,8 @@ class GROUPME(Notifier):
             pretty_metadata = PrettyMetadata(kwargs.get('parameters'))
 
             # Retrieve the poster from Plex
-            result = pmsconnect.PmsConnect().get_image(img=pretty_metadata.parameters.get('poster_thumb',''))
+            server = plexpy.PMS_SERVERS.get_server_by_id(pretty_metadata.parameters.get('server_id'))
+            result = server.get_image(img=pretty_metadata.parameters.get('poster_thumb',''))
             if result and result[0]:
                 poster_content = result[0]
             else:
@@ -2679,7 +2679,8 @@ class PUSHBULLET(Notifier):
             pretty_metadata = PrettyMetadata(kwargs['parameters'])
 
             # Retrieve the poster from Plex
-            result = pmsconnect.PmsConnect().get_image(img=pretty_metadata.parameters.get('poster_thumb', ''))
+            server = plexpy.PMS_SERVERS.get_server_by_id(pretty_metadata.parameters.get('server_id'))
+            result = server.get_image(img=pretty_metadata.parameters.get('poster_thumb', ''))
             if result and result[0]:
                 poster_content = result[0]
             else:
@@ -2836,7 +2837,8 @@ class PUSHOVER(Notifier):
             pretty_metadata = PrettyMetadata(kwargs['parameters'])
 
             # Retrieve the poster from Plex
-            result = pmsconnect.PmsConnect().get_image(img=pretty_metadata.parameters.get('poster_thumb', ''))
+            server = plexpy.PMS_SERVERS.get_server_by_id(pretty_metadata.parameters.get('server_id'))
+            result = server.get_image(img=pretty_metadata.parameters.get('poster_thumb', ''))
             if result and result[0]:
                 poster_content = result[0]
             else:
@@ -3398,7 +3400,8 @@ class TELEGRAM(Notifier):
             pretty_metadata = PrettyMetadata(kwargs['parameters'])
 
             # Retrieve the poster from Plex
-            result = pmsconnect.PmsConnect().get_image(img=pretty_metadata.parameters.get('poster_thumb', ''))
+            server = plexpy.PMS_SERVERS.get_server_by_id(pretty_metadata.parameters.get('server_id'))
+            result = server.get_image(img=pretty_metadata.parameters.get('poster_thumb', ''))
             if result and result[0]:
                 poster_content = result[0]
             else:

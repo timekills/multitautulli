@@ -18,7 +18,7 @@ import os
 import shutil
 import threading
 import urllib.parse
-import datetime
+from datetime import datetime
 
 import cherrypy
 from cherrypy.lib.static import serve_file, serve_download
@@ -69,6 +69,7 @@ def serve_template(templatename, **kwargs):
     http_root = plexpy.HTTP_ROOT
     server_name = 'Tautulli'
     cache_param = '?' + (plexpy.CURRENT_VERSION or common.RELEASE)
+    cache_param += '.' +  datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
 
     _session = get_session_info()
 
@@ -142,15 +143,11 @@ class WebInterface(object):
         """
         result = {"success": False}
         if token:
-            # Need to set token so result doesn't return http 401
-            plexpy.CONFIG.__setattr__('PMS_TOKEN', token)
-            plexpy.CONFIG.write()
-
-            plexpy.PLEXTV = plexpy.PlexTV()
-            plexpy.PMS_SERVERS = plexServers()
-
+            # Create and add first PlexTV account
+            self.add_plextv_account(token=token, is_plextv=True, is_admin=True)
+            plexpy.PLEXTV_ACCOUNTS = plexpy.PlexTVaccounts()
             plexpy.PMS_SERVERS.refresh()
-            server_list = self.get_servers_list()
+            server_list = self.get_servers_list(token=token)
 
             result = {"success": True,
                       "data": server_list,
@@ -165,7 +162,10 @@ class WebInterface(object):
     def setupComplete(self, **kwargs):
         """ Initial Setup of Tautulli is complete.
         """
-        configUpdate = self.configUpdate(**kwargs)
+        try:
+            configUpdate = self.configUpdate(**kwargs)
+        except Exception as e:
+            x = e
         return {'result': 'success', 'message': 'Setup Complete.'}
 
     ##### Home #####
@@ -241,7 +241,9 @@ class WebInterface(object):
         session = plexpy.PMS_SERVERS.get_current_activity(server_id=server_id, session_key=session_key, **kwargs)
 
         if session:
-            return serve_template(templatename="current_activity_instance.html", session=session)
+            server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
+            plexpass = server.PLEXTV.plexpass
+            return serve_template(templatename="current_activity_instance.html", session=session, plexpass=plexpass)
         else:
             return serve_template(templatename="current_activity_instance.html", session=None)
 
@@ -269,7 +271,7 @@ class WebInterface(object):
             server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
         else:
             for server in plexpy.PMS_SERVERS:
-                activity = server.PMSCONNECTION.get_current_activity()
+                activity = server.get_current_activity()
                 sessions = activity['sessions']
                 session = {'session_id': ''}
                 for session in sessions:
@@ -281,7 +283,7 @@ class WebInterface(object):
                     break
 
         if server and session_id:
-            result = server.PMSCONNECTION.terminate_session(session_key=session_key, session_id=session_id, message=message)
+            result = server.terminate_session(session_key=session_key, session_id=session_id, message=message)
             if result:
                 return {'result': 'success', 'message': 'Session terminated.'}
 
@@ -348,7 +350,7 @@ class WebInterface(object):
     def get_recently_added(self, server_id=None, count='0', media_type='', **kwargs):
         try:
             recently_added = plexpy.PMS_SERVERS.get_recently_added_media(server_id=server_id, count=count, media_type=media_type, **kwargs)
-        except IOError as e:
+        except Exception as e:
             return serve_template(templatename="recently_added.html", data=None)
 
         if recently_added:
@@ -370,6 +372,28 @@ class WebInterface(object):
             return {'result': 'success', 'message': 'Temporary sessions flushed.'}
         else:
             return {'result': 'error', 'message': 'Flush sessions failed.'}
+
+    ##### Servers #####
+
+    @cherrypy.expose
+    @requireAuth(member_of("admin"))
+    @cherrypy.tools.json_out()
+    def start_server(self, server_id=None, **kwargs):
+        if server_id:
+            server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
+            if server:
+                server.start()
+        return {'success': True}
+
+    @cherrypy.expose
+    @requireAuth(member_of("admin"))
+    @cherrypy.tools.json_out()
+    def stop_server(self, server_id=None, **kwargs):
+        if server_id:
+            server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
+            if server:
+                server.shutdown()
+        return {'success': True}
 
     ##### Libraries #####
 
@@ -641,7 +665,7 @@ class WebInterface(object):
             section_id = result['section_id']
             server_id = result['server_id']
             server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
-            result = server.PMSCONNECTION.get_recently_added_details(section_id=section_id, count=limit)
+            result = server.get_recently_added_details(section_id=section_id, count=limit)
         else:
             result = None
 
@@ -2371,7 +2395,7 @@ class WebInterface(object):
         if server_id == 'null':
             server_id = None
 
-        result = plexpy.PLEXTV.get_synced_items(machine_id=machine_id, user_id_filter=user_id, server_id_filter=server_id)
+        result = plexpy.PLEXTV_ACCOUNTS.get_synced_items(machine_id=machine_id, user_id_filter=user_id, server_id_filter=server_id)
 
         output = {"data": result}
         return output
@@ -2381,7 +2405,7 @@ class WebInterface(object):
     @requireAuth(member_of("admin"))
     def delete_sync_rows(self, client_id, sync_id, **kwargs):
         if client_id and sync_id:
-            delete_row = plexpy.PLEXTV.delete_sync(client_id=client_id, sync_id=sync_id)
+            delete_row = plexpy.PLEXTV_ACCOUNTS.delete_sync(client_id=client_id, sync_id=sync_id)
             return {'message': 'Sync deleted'}
         else:
             return {'message': 'no data received'}
@@ -2808,7 +2832,6 @@ class WebInterface(object):
             "log_blacklist": checked(plexpy.CONFIG.LOG_BLACKLIST),
             "check_github": checked(plexpy.CONFIG.CHECK_GITHUB),
             "pms_uuid": plexpy.CONFIG.PMS_UUID,
-            "pms_token": plexpy.CONFIG.PMS_TOKEN,
             "pms_logs_folder": plexpy.CONFIG.PMS_LOGS_FOLDER,
             "pms_logs_line_cap": plexpy.CONFIG.PMS_LOGS_LINE_CAP,
             "date_format": plexpy.CONFIG.DATE_FORMAT,
@@ -2973,14 +2996,6 @@ class WebInterface(object):
         if kwargs.pop('auth_changed', None):
             refresh_users = True
 
-            # If we changed the PlexTV Token, reinitialize the PlexTV instance.
-        if kwargs.get('pms_token') != plexpy.CONFIG.PMS_TOKEN:
-            plexpy.CONFIG.__setattr__('PMS_TOKEN', kwargs.get('pms_token'))
-            plexpy.CONFIG.write()
-            plexpy.PLEXTV = plexpy.PlexTV()
-            threading.Thread(target=plexpy.PMS_SERVERS.refresh()).start()
-            return {'result': 'success', 'message': 'Logging out.'}
-
         if plexpy.PMS_SERVERS:
             for server in plexpy.PMS_SERVERS:
                 if "pms_is_enabled-" + str(server.CONFIG.ID) in kwargs:
@@ -3037,19 +3052,78 @@ class WebInterface(object):
         return serve_template(templatename="configuration_table.html")
 
     @cherrypy.expose
+    @cherrypy.tools.json_out()
     @requireAuth(member_of("admin"))
-    def get_servers_list(self, **kwargs):
+    def get_accounts_table(self, **kwargs):
+
+        list = []
+        for account in plexpy.PLEXTV_ACCOUNTS.accounts:
+            list.append({'username': account.username,
+                         'usertoken': account.user_token,
+                         'isValid': account.is_validated,
+                         'isAdmin': account.is_admin,
+                         })
+
+        data = {"data": list,
+                "recordsTotal": len(list),
+                "recordsFiltered": len(list),
+                }
+        return data
+
+    @cherrypy.expose
+    @cherrypy.tools.json_out()
+    @requireAuth(member_of("admin"))
+    def add_plextv_account(self, token=None, is_plextv=False, is_admin=False, **kwargs):
+        if token:
+            account = plexpy.PLEXTV_ACCOUNTS.add_account(token=token, is_plextv=True, is_admin=is_admin)
+        return {'result': 'success', 'message': 'PlexTV account successfully added or updated.'}
+
+    @cherrypy.expose
+    @cherrypy.tools.json_out()
+    @requireAuth(member_of("admin"))
+    def delete_plextv_account(self, token=None, keep_history=True, **kwargs):
+        keep_history = False if keep_history == 'false' else True
+        plexpy.PLEXTV_ACCOUNTS.delete_account(token=token, keep_history=keep_history)
+        return {'result': 'success', 'message': 'PlexTV account successfully deleted.'}
+
+    @cherrypy.expose
+    @cherrypy.tools.json_out()
+    @requireAuth(member_of("admin"))
+    def refresh_accounts_table(self, **kwargs):
+        plexpy.PLEXTV_ACCOUNTS = plexpy.PlexTVaccounts()
+        return True
+
+    @cherrypy.expose
+    @cherrypy.tools.json_out()
+    @requireAuth(member_of("admin"))
+    def set_account_admin(self, token=None, checked=None, **kwargs):
+        checked = False if checked == 'false' else True
+        account = plexpy.PLEXTV_ACCOUNTS.get_account(token=token)
+        account.set_admin(checked)
+        return {'result': 'success'}
+
+    @cherrypy.expose
+    @requireAuth(member_of("admin"))
+    def get_plextv_account_modal(self, token=None, **kwargs):
+        account = plexpy.PLEXTV_ACCOUNTS.get_account(token=token)
+        return serve_template(templatename="plextv_account_modal.html", account=account)
+
+    @cherrypy.expose
+    @requireAuth(member_of("admin"))
+    def get_servers_list(self, token=None, **kwargs):
+
         # Build Server List Configuration Settings
         server_list = []
         for server in sorted(plexpy.PMS_SERVERS, key=lambda server: server.CONFIG.PMS_NAME):
-            server_list.append(server.get_config())
+            if server.CONFIG.PMS_TOKEN == token or token is None:
+                server_list.append(server.get_config())
         return server_list
 
     @cherrypy.expose
     @cherrypy.tools.json_out()
     @requireAuth(member_of("admin"))
-    def get_servers_table(self, **kwargs):
-        server_list = self.get_servers_list()
+    def get_servers_table(self, token=None, **kwargs):
+        server_list = self.get_servers_list(token=token)
         data = {"data": server_list,
                 "recordsTotal": len(server_list),
                 "recordsFiltered": len(server_list),
@@ -3210,13 +3284,13 @@ class WebInterface(object):
                 None
             ```
         """
-        server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
-        result = server.undelete()
-
-        if result:
-            return {'result': 'success', 'message': 'Server undeleted successfully.', 'server_id': server_id}
-        else:
-            return {'result': 'error', 'message': 'Failed to delete server.'}
+        msg = "Server ID not specified."
+        if server_id is not None:
+            server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
+            result, msg = server.undelete()
+            if result:
+                return {'result': 'success', 'message': 'Server undeleted successfully.', 'server_id': server_id}
+        return {'result': 'error', 'message': msg}
 
     @cherrypy.expose
     @requireAuth(member_of("admin"))
@@ -3262,12 +3336,10 @@ class WebInterface(object):
     @cherrypy.tools.json_out()
     @requireAuth(member_of("admin"))
     def get_server_update_params(self, server_id, **kwargs):
-        plexpass = plexpy.PLEXTV.get_plexpass_status()
-
         server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
-        update_channel = server.PMSCONNECTION.get_server_update_channel()
+        update_channel = server.get_server_update_channel()
 
-        return {'plexpass': plexpass,
+        return {'plexpass': server.PLEXTV.plexpass,
                 'pms_platform': common.PMS_PLATFORM_NAME_OVERRIDES.get(
                     server.CONFIG.PMS_PLATFORM, server.CONFIG.PMS_PLATFORM),
                 'pms_update_channel': server.CONFIG.PMS_UPDATE_CHANNEL,
@@ -3796,7 +3868,7 @@ class WebInterface(object):
                                  kwargs={'database': database_path,
                                          'table_name': table_name,
                                          'import_ignore_interval': import_ignore_interval}).start()
-                return 'Import has started. Check the Tautulli logs to monitor any problems.'
+                return 'Import has started. Check the Tautulli logs for import status.'
             else:
                 return db_check_msg
         elif app.lower() == 'plexivity':
@@ -3807,17 +3879,17 @@ class WebInterface(object):
                                  kwargs={'database': database_path,
                                          'table_name': table_name,
                                          'import_ignore_interval': import_ignore_interval}).start()
-                return 'Import has started. Check the Tautulli logs to monitor any problems.'
+                return 'Import has started. Check the Tautulli logs for import status.'
             else:
                 return db_check_msg
         elif app.lower() == 'tautulli':
-            db_check_msg = tautulli_import.validate_database(database=database_path)
+            db_check_msg = tautulli_import.validate_database(import_database=database_path)
 
-            if db_check_msg == 'success':
+            if db_check_msg == 'validated':
                 threading.Thread(target=tautulli_import.import_from_tautulli,
                                  kwargs={'import_database': database_path,
                                          'import_ignore_interval': import_ignore_interval}).start()
-                return 'Import has started. Check the Tautulli logs to monitor any problems.'
+                return 'Import has started. Check the Tautulli logs for import status.'
             else:
                 return db_check_msg
         else:
@@ -3900,7 +3972,7 @@ class WebInterface(object):
             ```
         """
         server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
-        result = server.PMSCONNECTION.get_server_pref(pref=pref)
+        result = server.get_server_pref(pref=pref)
 
         if result:
             return result
@@ -4072,7 +4144,7 @@ class WebInterface(object):
         else:
             server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
             if server.WS_CONNECTED:
-                metadata = server.PMSCONNECTION.get_metadata_details(rating_key=rating_key)
+                metadata = server.get_metadata_details(rating_key=rating_key)
             else:
                 raise cherrypy.HTTPRedirect(plexpy.HTTP_ROOT)
             if metadata:
@@ -4104,7 +4176,7 @@ class WebInterface(object):
     def get_item_children(self, server_id, rating_key='', **kwargs):
 
         server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
-        result = server.PMSCONNECTION.get_item_children(rating_key=rating_key)
+        result = server.get_item_children(rating_key=rating_key)
 
         if result:
             return serve_template(templatename="info_children_list.html", data=result, title="Children List")
@@ -4117,7 +4189,7 @@ class WebInterface(object):
     def get_item_children_related(self, server_id, rating_key='', title='', **kwargs):
 
         server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
-        result = server.PMSCONNECTION.get_item_children_related(rating_key=rating_key)
+        result = server.get_item_children_related(rating_key=rating_key)
 
         if result:
             return serve_template(templatename="info_collection_list.html", data=result, title=title)
@@ -4148,11 +4220,11 @@ class WebInterface(object):
         """
         if rating_key:
             server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
-            metadata = server.PMSCONNECTION.get_metadata_details(rating_key=rating_key)
+            metadata = server.get_metadata_details(rating_key=rating_key)
             data = {'timeline_data': metadata, 'notify_action': 'on_created', 'manual_trigger': True}
 
             if metadata['media_type'] not in ('movie', 'episode', 'track'):
-                children = server.PMSCONNECTION.get_item_children(rating_key=rating_key)
+                children = server.get_item_children(rating_key=rating_key)
                 child_keys = [child['rating_key'] for child in children['children_list'] if child['rating_key']]
                 data['child_keys'] = child_keys
 
@@ -4269,7 +4341,7 @@ class WebInterface(object):
                     else:
                         return
 
-                result = server.PMSCONNECTION.get_image(img=img,
+                result = server.get_image(img=img,
                                                         width=width,
                                                         height=height,
                                                         opacity=opacity,
@@ -4537,7 +4609,7 @@ class WebInterface(object):
                           }
         for server in plexpy.PMS_SERVERS:
             if session.allow_session_server(server.CONFIG.ID) and server.CONFIG.PMS_IS_ENABLED:
-                result = server.PMSCONNECTION.get_search_results(query=query, limit=limit)
+                result = server.get_search_results(query=query, limit=limit)
                 search_results['results_count'] += int(result['results_count'])
                 for (k, v) in result['results_list'].items():
                     search_results['results_list'][k].extend(v)
@@ -4600,7 +4672,7 @@ class WebInterface(object):
             data_factory = datafactory.DataFactory()
             old_key_list = data_factory.get_rating_keys_list(server_id=server_id, rating_key=old_rating_key, media_type=media_type)
             server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
-            new_key_list = server.PMSCONNECTION.get_rating_keys_list(rating_key=new_rating_key, media_type=media_type)
+            new_key_list = server.get_rating_keys_list(rating_key=new_rating_key, media_type=media_type)
 
             result = data_factory.update_metadata(server_id=server_id,
                                                   old_key_list=old_key_list,
@@ -4635,7 +4707,7 @@ class WebInterface(object):
         """
 
         server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
-        result = server.PMSCONNECTION.get_rating_keys_list(rating_key=rating_key, media_type=media_type)
+        result = server.get_rating_keys_list(rating_key=rating_key, media_type=media_type)
 
         if result:
             return result
@@ -4677,7 +4749,7 @@ class WebInterface(object):
     def get_pms_sessions_json(self, server_id=None, **kwargs):
         """ Get all the current sessions. """
         server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
-        result = server.PMSCONNECTION.get_sessions('json')
+        result = server.get_sessions('json')
 
         if result:
             return result
@@ -4832,7 +4904,7 @@ class WebInterface(object):
             ```
         """
         server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
-        metadata = server.PMSCONNECTION.get_metadata_details(rating_key=rating_key)
+        metadata = server.get_metadata_details(rating_key=rating_key)
 
         if metadata:
             return metadata
@@ -4887,7 +4959,7 @@ class WebInterface(object):
             media_type = kwargs['type']
 
         server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
-        result = server.PMSCONNECTION.get_recently_added_details(start=start, count=count, media_type=media_type, section_id=section_id)
+        result = server.get_recently_added_details(start=start, count=count, media_type=media_type, section_id=section_id)
 
         if result:
             return result
@@ -4900,7 +4972,7 @@ class WebInterface(object):
     def get_friends_list(self, **kwargs):
         """ Get the friends list of the server owner for Plex.tv. """
 
-        result = plexpy.PLEXTV.get_plextv_friends('json')
+        result = plexpy.PLEXTV_ACCOUNTS.get_plextv_friends('json')
 
         if result:
             return result
@@ -4913,7 +4985,7 @@ class WebInterface(object):
     def get_user_details(self, **kwargs):
         """ Get all details about a the server's owner from Plex.tv. """
 
-        result = plexpy.PLEXTV.get_plextv_user_details('json')
+        result = plexpy.PLEXTV_ACCOUNTS.get_plextv_user_details('json')
 
         if result:
             return result
@@ -4943,7 +5015,7 @@ class WebInterface(object):
             ```
         """
         server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
-        result = server.PMSCONNECTION.get_server_identity()
+        result = server.get_server_identity()
 
         if result:
             return result
@@ -5278,10 +5350,10 @@ class WebInterface(object):
         if server_id is None:
             result = []
             for server in plexpy.PMS_SERVERS:
-                result.extend(server.PMSCONNECTION.get_library_details())
+                result.extend(server.get_library_details())
         else:
             server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
-            result = server.PMSCONNECTION.get_library_details()
+            result = server.get_library_details()
 
         if result:
             return result
@@ -5518,7 +5590,7 @@ class WebInterface(object):
             ```
         """
         server = plexpy.PMS_SERVERS.get_server_by_id(server_id)
-        result = server.PMSCONNECTION.get_server_info()
+        result = server.get_server_info()
         return result
 
     @cherrypy.expose

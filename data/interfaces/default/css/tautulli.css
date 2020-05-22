@@ -3516,8 +3516,8 @@ pre::-webkit-scrollbar-thumb {
     color: #fff;
     padding-top: 15px;
 }
-.config-servers-table .active {
-    color: #f9be03;
+.config-servers-table .active i {
+    color: #f9be03 !important;
 }
 a.no-highlight {
     color: #777;

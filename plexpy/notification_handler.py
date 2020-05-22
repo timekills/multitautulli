@@ -150,7 +150,7 @@ def notify_conditions(notify_action=None, stream_data=None, timeline_data=None):
 
         if notify_action == 'on_concurrent':
             server = plexpy.PMS_SERVERS.get_server_by_id(stream_data['server_id'])
-            result = server.PMSCONNECTION.get_current_activity()
+            result = server.get_current_activity()
 
             user_sessions = []
             if result:
@@ -503,9 +503,9 @@ def build_media_notify_params(notify_action=None, session=None, timeline=None, m
 
     child_metadata = grandchild_metadata = []
     for key in kwargs.pop('child_keys', []):
-        child_metadata.append(server.PMSCONNECTION.get_metadata_details(rating_key=key))
+        child_metadata.append(server.get_metadata_details(rating_key=key))
     for key in kwargs.pop('grandchild_keys', []):
-        grandchild_metadata.append(server.PMSCONNECTION.get_metadata_details(rating_key=key))
+        grandchild_metadata.append(server.get_metadata_details(rating_key=key))
 
     # Session values
     session = session or {}
@@ -725,6 +725,7 @@ def build_media_notify_params(notify_action=None, session=None, timeline=None, m
         'tautulli_remote': plexpy.CONFIG.GIT_REMOTE,
         'tautulli_branch': plexpy.CONFIG.GIT_BRANCH,
         'tautulli_commit': plexpy.CURRENT_VERSION,
+        'server_id': server.CONFIG.ID,
         'server_name': server.CONFIG.PMS_NAME,
         'server_ip': server.CONFIG.PMS_IP,
         'server_port': server.CONFIG.PMS_PORT,
@@ -949,7 +950,7 @@ def build_server_notify_params(notify_action=None, server_id=None, **kwargs):
         server_version = server.CONFIG.PMS_VERSION
         server_identifier = server.CONFIG.PMS_IDENTIFIER
         if server.WS_CONNECTED:
-            update_channel = server.PMSCONNECTION.get_server_update_channel()
+            update_channel = server.get_server_update_channel()
         else:
             update_channel = ''
     else:
@@ -968,6 +969,7 @@ def build_server_notify_params(notify_action=None, server_id=None, **kwargs):
         'tautulli_remote': plexpy.CONFIG.GIT_REMOTE,
         'tautulli_branch': plexpy.CONFIG.GIT_BRANCH,
         'tautulli_commit': plexpy.CURRENT_VERSION,
+        'server_id': server_id,
         'server_name': server_name,
         'server_ip': server_ip,
         'server_port': server_port,
@@ -1229,7 +1231,7 @@ def get_img_info(img=None, server_id=None, rating_key=None, title='', width=1000
         img_info = database_img_info[0]
 
     elif not database_img_info and img:
-        result = server.PMSCONNECTION.get_image(refresh=True, **image_info)
+        result = server.get_image(refresh=True, **image_info)
 
         if result and result[0]:
             img_url = delete_hash = ''

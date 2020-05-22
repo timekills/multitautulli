@@ -15,7 +15,6 @@
 
 import time
 import requests
-#import socket
 
 import plexpy
 from plexpy import activity_processor
@@ -30,7 +29,7 @@ from plexpy.config import bool_int
 def check_active_sessions(server=None, ws_request=False):
     if server.WS and server.WS.WS_CONNECTION and server.WS.WS_CONNECTION.connected:
         with server.monitor_lock:
-            session_list = server.PMSCONNECTION.get_current_activity()
+            session_list = server.get_current_activity()
             monitor_db = database.MonitorDatabase()
             monitor_process = activity_processor.ActivityProcessor(server)
             logger.debug(u"Tautulli Monitor :: %s: Checking for active streams." % server.CONFIG.PMS_NAME)
@@ -200,7 +199,7 @@ def check_recently_added(server=None):
             time_threshold = int(time.time()) - delay
             time_interval = plexpy.CONFIG.MONITORING_INTERVAL
 
-            recently_added_list = server.PMSCONNECTION.get_recently_added_details(count='10')
+            recently_added_list = server.get_recently_added_details(count='10')
 
             library_data = libraries.Libraries()
 
@@ -220,7 +219,7 @@ def check_recently_added(server=None):
 
                     if 0 < time_threshold - int(item['added_at']) <= time_interval:
                         if item['media_type'] == 'movie':
-                            metadata = server.PMSCONNECTION.get_metadata_details(item['rating_key'])
+                            metadata = server.get_metadata_details(item['rating_key'])
                             if metadata:
                                 metadata = [metadata]
                             else:
@@ -228,7 +227,7 @@ def check_recently_added(server=None):
                                              % (server.CONFIG.PMS_NAME, str(item['rating_key'])))
 
                         else:
-                            metadata = server.PMSCONNECTION.get_metadata_children_details(item['rating_key'])
+                            metadata = server.get_metadata_children_details(item['rating_key'])
                             if not metadata:
                                 logger.error(u"Tautulli Monitor :: %s: Unable to retrieve children metadata for rating_key %s" \
                                              % (server.CONFIG.PMS_NAME, str(item['rating_key'])))
@@ -249,7 +248,7 @@ def check_recently_added(server=None):
 
                             if 0 < time_threshold - int(item['added_at']) <= time_interval:
                                 if item['media_type'] == 'episode' or item['media_type'] == 'track':
-                                    metadata = server.PMSCONNECTION.get_metadata_details(item['grandparent_rating_key'])
+                                    metadata = server.get_metadata_details(item['grandparent_rating_key'])
 
                                     if metadata:
                                         item = metadata
@@ -270,7 +269,7 @@ def connect_server(server=None, log=True, startup=False):
         if log:
             logger.info(u"Tautulli Monitor :: %s: Checking for Plex Cloud server status..." % server.CONFIG.PMS_NAME)
 
-        status = plexpy.PLEXTV.get_cloud_server_status(server=server)
+        status = server.PLEXTV.get_cloud_server_status(server=server)
 
         if status is True:
             logger.info(u"Tautulli Monitor :: %s: Plex Cloud server is active." % server.CONFIG.PMS_NAME)
@@ -299,7 +298,7 @@ def connect_server(server=None, log=True, startup=False):
 def check_server_access(server=None):
     if server.WS_CONNECTED and server.WS and server.WS.WS_CONNECTION and server.WS.WS_CONNECTION.connected:
         with server.monitor_lock:
-            server_response = server.PMSCONNECTION.get_server_response()
+            server_response = server.get_server_response()
 
             # Check for remote access
             if server_response:
@@ -333,11 +332,11 @@ def check_server_access(server=None):
 def check_server_updates(server=None):
     if server.WS_CONNECTED and server.WS and server.WS.WS_CONNECTION and server.WS.WS_CONNECTION.connected:
         with server.monitor_lock:
-            server_version = server.PMSCONNECTION.get_server_version()
+            server_version = server.get_server_version()
             if server_version and server_version != server.CONFIG.PMS_VERSION:
                 server.CONFIG.PMS_VERSION = server_version
 
-            download_info = server.PMSCONNECTION.get_server_info()
+            download_info = server.get_server_info()
 
             if download_info and download_info['update_available']:
                 logger.info(u"Tautulli Monitor :: %s: PMS update available version: %s" % (server.CONFIG.PMS_NAME, download_info['version']))
