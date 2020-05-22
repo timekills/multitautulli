@@ -1,7 +1,8 @@
 # Changelog
 
-## v4.1.00-beta (2020-05-19)
+## v4.1.00 (2020-05-22)
 * (NEW) Support for multiple Plex.TV accounts.
+* (NEW) Added ability to start/stop server monitoring from dashboard server status.
 
 ## v4.0.13 (2020-05-03)
 * (UPDATED) Added OSx instructions to installation.md - Thanks, SHASHWATAA
