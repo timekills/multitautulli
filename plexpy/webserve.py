@@ -3010,7 +3010,10 @@ class WebInterface(object):
 
 
         # Update and Write the config
-        plexpy.CONFIG.process_kwargs(kwargs)
+        try:
+            plexpy.CONFIG.process_kwargs(kwargs)
+        except (KeyError) as e:
+            logger.error("Unknown keyword arg in ConfigUpdate:  %s" % e)
         plexpy.CONFIG.write()
 
         # Reconfigure scheduler if intervals changed

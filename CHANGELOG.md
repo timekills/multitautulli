@@ -1,5 +1,8 @@
 # Changelog
 
+## v4.1.01 (2020-07-27)
+* (FIXED) Issue with configuration update with keyword args after adding multi-account support.
+
 ## v4.1.00 (2020-05-22)
 * (NEW) Support for multiple Plex.TV accounts.
 * (NEW) Added ability to start/stop server monitoring from dashboard server status.

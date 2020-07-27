@@ -53,7 +53,7 @@ accounts_table_options = {
             "createdCell": function (td, cellData, rowData, row, col) {
                 var checked = (rowData['isAdmin']) ? 'CHECKED' : '';
                 $(td).html(
-                  '<input type="checkbox" class="isAdmin" id="isAdmin" name="isAdmin" data-token="' + rowData['usertoken'] + '" value="1"' + checked + '>'
+                  '<input type="checkbox" class="isAdmin" data-token="' + rowData['usertoken'] + '" value="1"' + checked + '>'
                 );
             },
             "className": "center",
