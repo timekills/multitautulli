@@ -1,5 +1,8 @@
 # Changelog
 
+## v4.1.02 (2020-09-11)
+* (FIXED) Issue when playing media extras. 
+
 ## v4.1.01 (2020-07-27)
 * (FIXED) Issue with configuration update with keyword args after adding multi-account support.
 

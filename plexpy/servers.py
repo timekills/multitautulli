@@ -53,9 +53,6 @@ class plexServers(object):
         for server in self.servers:
             yield server
 
-    def __getattr__(self, key):
-        return getattr(self, key)
-
     def __setattr__(self, key, value):
         vars(self)[key] = value
 
@@ -1308,18 +1305,15 @@ class plexServer(object):
 
             section_id = helpers.get_xml_attr(a, 'librarySectionID')
             library_name = helpers.get_xml_attr(a, 'librarySectionTitle')
+            library_id = ''
 
-        query = 'SELECT id FROM library_sections ' \
-                'WHERE server_id = ? and section_id = ?'
-        monitor_db = database.MonitorDatabase()
-
-        for x in range(2):
-            result = monitor_db.select_single(query, args=[self.CONFIG.ID, int(section_id)])
-            if result:
-                library_id = result['id']
-                break
-            else:
-                self.refresh_libraries()
+            if section_id.isdigit():
+                for x in range(2):
+                    library_id = libraries.get_section_index(server_id=self.CONFIG.ID, section_id=section_id)
+                    if library_id:
+                        break
+                    else:
+                        self.refresh_libraries()
 
         directors = []
         writers = []

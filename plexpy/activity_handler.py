@@ -63,7 +63,7 @@ class ActivityHandler(object):
                 if int(session['session_key']) == self.get_session_key():
                     # Live sessions don't have rating keys in sessions
                     # Get it from the websocket data
-                    if not session['rating_key']:
+                    if 'rating_key' not in session:
                         session['rating_key'] = self.get_rating_key()
                     return session
 
