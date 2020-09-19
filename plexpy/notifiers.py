@@ -3046,7 +3046,6 @@ class SCRIPTS(Notifier):
         # Common environment variables
         env = os.environ.copy()
         env.update({
-            'PLEX_TOKEN': plexpy.CONFIG.PMS_TOKEN,
             'TAUTULLI_URL': helpers.get_plexpy_url(hostname='localhost'),
             'TAUTULLI_PUBLIC_URL': plexpy.CONFIG.HTTP_BASE_URL + plexpy.HTTP_ROOT,
             'TAUTULLI_APIKEY': plexpy.CONFIG.API_KEY,
