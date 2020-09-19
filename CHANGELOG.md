@@ -1,5 +1,8 @@
 # Changelog
 
+## v4.1.03 (2020-09-19)
+* (FIXED) Issue with notifier script execution after V4.1 changes. 
+
 ## v4.1.02 (2020-09-11)
 * (FIXED) Issue when playing media extras. 
 
