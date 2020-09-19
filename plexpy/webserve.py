@@ -293,7 +293,6 @@ class WebInterface(object):
     @cherrypy.tools.json_out()
     @requireAuth(member_of("admin"))
     def return_plex_xml_url(self, endpoint='', plextv=False, server_id=False, **kwargs):
-        kwargs['X-Plex-Token'] = plexpy.CONFIG.PMS_TOKEN
 
         xml_url = []
 
@@ -307,6 +306,7 @@ class WebInterface(object):
                 ep = ep.format(machine_id=server.CONFIG.PMS_IDENTIFIER)
             if (server_id and server_id.isdigit() and int(server_id) == server.CONFIG.ID) \
                     or (plextv == 'true' and '{machine_id}' not in endpoint):
+                kwargs['X-Plex-Token'] = server.CONFIG.PMS_TOKEN
                 xml_url.append(base_url + ep + '?' + urllib.parse.urlencode(kwargs))
                 break
             elif not server_id or server_id == 'false':
