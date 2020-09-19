@@ -3053,7 +3053,8 @@ class SCRIPTS(Notifier):
             })
 
         if self.pythonpath:
-            env['PYTHONPATH'] = os.pathsep.join([p for p in sys.path if p])
+            env['PYTHONPATH'] = os.path.dirname(sys.executable) + ';' + os.pathsep.join([p for p in sys.path if p])
+            env['PATH'] = env['PYTHONPATH']
 
         try:
             process = subprocess.Popen(script,
